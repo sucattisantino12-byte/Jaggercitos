@@ -1,98 +1,145 @@
-from flask import Flask, jsonify, request, render_template_string, session
-import os, hashlib, secrets
-from datetime import datetime, timedelta
-from db import get_db, init_db, close_db, execute, execute_one
+from flask import Flask, jsonify, request, session, send_from_directory
+import os, hashlib, secrets, traceback
+from datetime import timedelta
+from db import get_db, init_db, close_db, q, q1
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'jaggercitos_secret_2024')
+app.secret_key = os.environ.get('SECRET_KEY', 'clubpass_secret_2024')
 app.permanent_session_lifetime = timedelta(hours=12)
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
 app.teardown_appcontext(close_db)
 
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'jagger2024')
-EXTERNAL_API_KEY = os.environ.get('EXTERNAL_API_KEY', 'jaggercitos_ext_key')
+SUPER_ADMIN_PASSWORD = os.environ.get('SUPER_ADMIN_PASSWORD', 'superadmin2024')
+EXTERNAL_API_KEY = os.environ.get('EXTERNAL_API_KEY', 'clubpass_ext_key')
 
 with app.app_context():
     init_db()
 
-def hash_password(p):
-    return hashlib.sha256(p.encode()).hexdigest()
+# ── HELPERS ───────────────────────────────────────────────────────────────────
 
-def get_config():
-    db = get_db()
-    rows = execute(db, 'SELECT clave, valor FROM config_puntos')
-    return {r['clave']: r['valor'] for r in rows}
+def hp(p): return hashlib.sha256(p.encode()).hexdigest()
 
-def calcular_nivel(puntos):
-    if puntos >= 3000: return 4
-    if puntos >= 1000: return 3
-    if puntos >= 300:  return 2
+def nivel(pts):
+    if pts >= 3000: return 4
+    if pts >= 1000: return 3
+    if pts >= 300:  return 2
     return 1
 
-def calcular_racha(usuario_id):
+def cfg(boliche_id):
     db = get_db()
-    rows = execute(db, 'SELECT id FROM visitas WHERE usuario_id = :uid', {'uid': usuario_id})
-    return len(rows)
+    rows = q(db, 'SELECT clave, valor FROM config_puntos WHERE boliche_id=:bid', {'bid': boliche_id})
+    return {r['clave']: r['valor'] for r in rows}
 
-def require_admin():
-    return session.get('admin')
+def safe(row):
+    if not row: return None
+    return {k: str(v) if hasattr(v, 'hex') or v.__class__.__name__ == 'UUID' else v
+            for k, v in row.items()}
 
-def safe_dict(row):
-    if row is None: return None
-    return {k: str(v) if hasattr(v, 'hex') else v for k, v in dict(row).items()}
+def get_admin_session():
+    return session.get('admin_id'), session.get('admin_rol'), session.get('admin_boliche_id')
 
-ADMIN_HTML = open(os.path.join(os.path.dirname(__file__), 'admin.html'), encoding='utf-8').read() if os.path.exists(os.path.join(os.path.dirname(__file__), 'admin.html')) else "<h1>Admin</h1>"
+def require_admin(roles=None):
+    admin_id, rol, boliche_id = get_admin_session()
+    if not admin_id: return None
+    if roles and rol not in roles: return None
+    return {'id': admin_id, 'rol': rol, 'boliche_id': boliche_id}
 
-# ── ADMIN PAGE ─────────────────────────────────────────────────────────────────
+def require_super():
+    return session.get('super_admin')
+
+@app.errorhandler(Exception)
+def handle_error(e):
+    traceback.print_exc()
+    return jsonify({'ok': False, 'error': str(e)}), 500
+
+# ── PÁGINAS ────────────────────────────────────────────────────────────────────
 
 @app.route('/')
 def index():
-    return render_template_string(ADMIN_HTML)
+    path = os.path.join(os.path.dirname(__file__), 'admin.html')
+    with open(path, encoding='utf-8') as f:
+        from flask import render_template_string
+        return render_template_string(f.read())
 
-# ── AUTH ───────────────────────────────────────────────────────────────────────
+@app.route('/cliente')
+def cliente():
+    path = os.path.join(os.path.dirname(__file__), 'client', 'index.html')
+    with open(path, encoding='utf-8') as f:
+        return f.read(), 200, {'Content-Type': 'text/html; charset=utf-8'}
+
+@app.route('/superadmin')
+def superadmin():
+    path = os.path.join(os.path.dirname(__file__), 'superadmin.html')
+    if os.path.exists(path):
+        with open(path, encoding='utf-8') as f:
+            return f.read(), 200, {'Content-Type': 'text/html; charset=utf-8'}
+    return '<h1>Super Admin - coming soon</h1>', 200
+
+@app.route('/manifest.json')
+def manifest():
+    return jsonify({"name":"ClubPass","short_name":"ClubPass","start_url":"/cliente","display":"standalone","background_color":"#050505","theme_color":"#d4a829"})
+
+@app.route('/sw.js')
+def sw():
+    return "self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>self.clients.claim());", 200, {'Content-Type':'application/javascript'}
+
+# ── AUTH SUPER ADMIN ───────────────────────────────────────────────────────────
+
+@app.route('/api/superadmin/login', methods=['POST'])
+def superadmin_login():
+    body = request.get_json() or {}
+    if body.get('password') == SUPER_ADMIN_PASSWORD:
+        session.permanent = True
+        session['super_admin'] = True
+        return jsonify({'ok': True})
+    return jsonify({'ok': False, 'error': 'Contraseña incorrecta'}), 401
+
+@app.route('/api/superadmin/logout', methods=['POST'])
+def superadmin_logout():
+    session.pop('super_admin', None)
+    return jsonify({'ok': True})
+
+# ── AUTH ADMIN BOLICHE ─────────────────────────────────────────────────────────
 
 @app.route('/api/admin/login', methods=['POST'])
 def admin_login():
     body = request.get_json() or {}
-    if body.get('password') == ADMIN_PASSWORD:
-        session.permanent = True
-        session['admin'] = True
-        return jsonify({'ok': True})
-    return jsonify({'ok': False}), 401
+    email = body.get('email','').strip().lower()
+    password = body.get('password','').strip()
+    db = get_db()
+    row = q1(db, '''SELECT a.id, a.rol, a.nombre, a.boliche_id,
+                           b.nombre as boliche_nombre, b.slug, b.color_primario
+                    FROM admins a JOIN boliches b ON b.id=a.boliche_id
+                    WHERE a.email=:e AND a.password_hash=:p AND a.activo=TRUE''',
+             {'e': email, 'p': hp(password)})
+    if not row: return jsonify({'ok': False, 'error': 'Email o contraseña incorrectos'}), 401
+    session.permanent = True
+    session['admin_id'] = str(row['id'])
+    session['admin_rol'] = row['rol']
+    session['admin_boliche_id'] = str(row['boliche_id'])
+    return jsonify({'ok': True, 'admin': safe(row)})
 
 @app.route('/api/admin/logout', methods=['POST'])
 def admin_logout():
-    session.pop('admin', None)
+    for k in ['admin_id','admin_rol','admin_boliche_id']:
+        session.pop(k, None)
     return jsonify({'ok': True})
 
-@app.route('/api/auth/login', methods=['POST'])
-def auth_login():
-    body = request.get_json() or {}
-    usuario_q = body.get('usuario','').strip()
-    password = body.get('password','').strip()
+@app.route('/api/admin/me')
+def admin_me():
+    admin = require_admin()
+    if not admin: return jsonify({'ok': False}), 401
     db = get_db()
-    row = execute_one(db,
-        'SELECT id,usuario,nombre_display,dni,puntos_total,nivel,avatar FROM usuarios WHERE (usuario=:u OR email=:e) AND password_hash=:p',
-        {'u': usuario_q, 'e': usuario_q.lower(), 'p': hash_password(password)}
-    )
-    if not row: return jsonify({'ok': False, 'error': 'Usuario o contraseña incorrectos'}), 401
-    return jsonify({'ok': True, 'usuario': safe_dict(row)})
+    row = q1(db, '''SELECT a.id,a.rol,a.nombre,a.email,a.boliche_id,
+                           b.nombre as boliche_nombre,b.slug,b.color_primario,b.color_secundario,b.logo_url
+                    FROM admins a JOIN boliches b ON b.id=a.boliche_id
+                    WHERE a.id=:id''', {'id': admin['id']})
+    return jsonify({'ok': True, 'admin': safe(row)})
 
-@app.route('/api/auth/me', methods=['GET'])
-def auth_me():
-    usuario_q = request.args.get('usuario','').strip()
-    db = get_db()
-    row = execute_one(db,
-        'SELECT id,usuario,nombre_display,dni,puntos_total,nivel,avatar FROM usuarios WHERE usuario=:u',
-        {'u': usuario_q}
-    )
-    if not row: return jsonify({'ok': False})
-    return jsonify({'ok': True, 'usuario': safe_dict(row)})
+# ── AUTH CLIENTE ───────────────────────────────────────────────────────────────
 
-# ── USUARIOS ───────────────────────────────────────────────────────────────────
-
-@app.route('/api/usuarios/registro', methods=['POST'])
-def registro_usuario():
+@app.route('/api/auth/registro', methods=['POST'])
+def registro():
     body = request.get_json() or {}
     email = body.get('email','').strip().lower()
     password = body.get('password','').strip()
@@ -100,255 +147,382 @@ def registro_usuario():
     dni = body.get('dni','').strip()
     if not all([email, password, usuario, dni]):
         return jsonify({'ok': False, 'error': 'Completá todos los campos'}), 400
+    if len(password) < 6:
+        return jsonify({'ok': False, 'error': 'La contraseña debe tener al menos 6 caracteres'}), 400
     db = get_db()
-    if execute_one(db, 'SELECT id FROM usuarios WHERE dni=:d', {'d': dni}):
+    if q1(db, 'SELECT id FROM usuarios WHERE dni=:d', {'d': dni}):
         return jsonify({'ok': False, 'error': 'Ya existe una cuenta con ese DNI'}), 400
-    if execute_one(db, 'SELECT id FROM usuarios WHERE usuario=:u', {'u': usuario}):
+    if q1(db, 'SELECT id FROM usuarios WHERE usuario=:u', {'u': usuario}):
         return jsonify({'ok': False, 'error': 'Ese usuario ya está tomado'}), 400
-    if execute_one(db, 'SELECT id FROM usuarios WHERE email=:e', {'e': email}):
+    if q1(db, 'SELECT id FROM usuarios WHERE email=:e', {'e': email}):
         return jsonify({'ok': False, 'error': 'Ya existe una cuenta con ese email'}), 400
-    execute(db, 'INSERT INTO usuarios (email,password_hash,usuario,dni) VALUES (:e,:p,:u,:d)',
-            {'e': email, 'p': hash_password(password), 'u': usuario, 'd': dni})
+    q(db, 'INSERT INTO usuarios (email,password_hash,usuario,dni) VALUES (:e,:p,:u,:d)',
+      {'e': email, 'p': hp(password), 'u': usuario, 'd': dni})
     db.commit()
     return jsonify({'ok': True})
 
-@app.route('/api/usuarios', methods=['GET'])
-def get_usuarios():
-    if not require_admin(): return jsonify({'ok': False}), 401
-    db = get_db()
-    rows = execute(db, 'SELECT id,usuario,nombre_display,dni,puntos_total,nivel FROM usuarios ORDER BY puntos_total DESC')
-    return jsonify([safe_dict(r) for r in rows])
-
-@app.route('/api/usuarios/buscar', methods=['GET'])
-def buscar_usuario():
-    q = request.args.get('q','').strip()
-    if not q: return jsonify({'usuario': None})
-    db = get_db()
-    row = execute_one(db,
-        'SELECT id,usuario,nombre_display,dni,puntos_total,nivel FROM usuarios WHERE usuario ILIKE :q OR dni=:d LIMIT 1',
-        {'q': f'%{q}%', 'd': q}
-    )
-    return jsonify({'usuario': safe_dict(row) if row else None})
-
-@app.route('/api/usuarios/<usuario_id>/puntos', methods=['POST'])
-def ajustar_puntos(usuario_id):
-    if not require_admin(): return jsonify({'ok': False}), 401
+@app.route('/api/auth/login', methods=['POST'])
+def auth_login():
     body = request.get_json() or {}
-    delta = int(body.get('delta', 0))
+    u = body.get('usuario','').strip()
+    p = body.get('password','').strip()
     db = get_db()
-    execute(db, 'UPDATE usuarios SET puntos_total=GREATEST(0,puntos_total+:d) WHERE id=:id', {'d': delta, 'id': usuario_id})
-    row = execute_one(db, 'SELECT puntos_total FROM usuarios WHERE id=:id', {'id': usuario_id})
-    nivel = calcular_nivel(row['puntos_total'])
-    execute(db, 'UPDATE usuarios SET nivel=:n WHERE id=:id', {'n': nivel, 'id': usuario_id})
-    db.commit()
-    return jsonify({'ok': True, 'puntos_total': row['puntos_total'], 'nivel': nivel})
+    row = q1(db, 'SELECT id,usuario,dni,avatar FROM usuarios WHERE (usuario=:u OR email=:e) AND password_hash=:p',
+             {'u': u, 'e': u.lower(), 'p': hp(p)})
+    if not row: return jsonify({'ok': False, 'error': 'Usuario o contraseña incorrectos'}), 401
+    uid = str(row['id'])
+    boliches = q(db, '''SELECT b.id,b.nombre,b.slug,b.color_primario,b.color_secundario,b.logo_url,
+                               bu.jaggercitos,bu.nivel,bu.nombre_display
+                        FROM boliche_usuarios bu JOIN boliches b ON b.id=bu.boliche_id
+                        WHERE bu.usuario_id=:uid AND b.activo=TRUE''', {'uid': uid})
+    return jsonify({'ok': True, 'usuario': safe(row), 'boliches': [safe(b) for b in boliches]})
 
-@app.route('/api/usuarios/<usuario_id>/nombre-display', methods=['POST'])
-def cambiar_nombre_display(usuario_id):
-    if not require_admin(): return jsonify({'ok': False}), 401
-    body = request.get_json() or {}
-    nombre = body.get('nombre_display','').strip()
+@app.route('/api/auth/me')
+def auth_me():
+    u = request.args.get('usuario','').strip()
     db = get_db()
-    execute(db, 'UPDATE usuarios SET nombre_display=:n WHERE id=:id', {'n': nombre, 'id': usuario_id})
+    row = q1(db, 'SELECT id,usuario,dni,avatar FROM usuarios WHERE usuario=:u', {'u': u})
+    if not row: return jsonify({'ok': False})
+    uid = str(row['id'])
+    boliches = q(db, '''SELECT b.id,b.nombre,b.slug,b.color_primario,b.color_secundario,b.logo_url,
+                               bu.jaggercitos,bu.nivel,bu.nombre_display,bu.id as bu_id
+                        FROM boliche_usuarios bu JOIN boliches b ON b.id=bu.boliche_id
+                        WHERE bu.usuario_id=:uid AND b.activo=TRUE''', {'uid': uid})
+    return jsonify({'ok': True, 'usuario': safe(row), 'boliches': [safe(b) for b in boliches]})
+
+# ── BOLICHES (público) ────────────────────────────────────────────────────────
+
+@app.route('/api/boliches')
+def get_boliches():
+    db = get_db()
+    rows = q(db, 'SELECT id,nombre,slug,color_primario,color_secundario,logo_url,descripcion FROM boliches WHERE activo=TRUE ORDER BY nombre')
+    return jsonify([safe(r) for r in rows])
+
+@app.route('/api/boliches/<slug>')
+def get_boliche(slug):
+    db = get_db()
+    row = q1(db, 'SELECT id,nombre,slug,color_primario,color_secundario,logo_url,descripcion FROM boliches WHERE slug=:s AND activo=TRUE', {'s': slug})
+    if not row: return jsonify({'ok': False, 'error': 'Boliche no encontrado'}), 404
+    return jsonify(safe(row))
+
+@app.route('/api/boliches/<slug>/unirse', methods=['POST'])
+def unirse_boliche(slug):
+    body = request.get_json() or {}
+    usuario_q = body.get('usuario','').strip()
+    db = get_db()
+    u = q1(db, 'SELECT id FROM usuarios WHERE usuario=:u', {'u': usuario_q})
+    if not u: return jsonify({'ok': False, 'error': 'Usuario no encontrado'}), 404
+    b = q1(db, 'SELECT id FROM boliches WHERE slug=:s AND activo=TRUE', {'s': slug})
+    if not b: return jsonify({'ok': False, 'error': 'Boliche no encontrado'}), 404
+    existing = q1(db, 'SELECT id FROM boliche_usuarios WHERE boliche_id=:bid AND usuario_id=:uid',
+                  {'bid': str(b['id']), 'uid': str(u['id'])})
+    if existing: return jsonify({'ok': False, 'error': 'Ya estás en este boliche'}), 400
+    q(db, 'INSERT INTO boliche_usuarios (boliche_id,usuario_id) VALUES (:bid,:uid)',
+      {'bid': str(b['id']), 'uid': str(u['id'])})
     db.commit()
     return jsonify({'ok': True})
+
+# ── AVATAR ────────────────────────────────────────────────────────────────────
 
 @app.route('/api/usuario/avatar', methods=['POST'])
-def guardar_avatar():
+def avatar():
     body = request.get_json(force=True, silent=True) or {}
-    usuario_q = (body.get('usuario') or '').strip()
-    avatar = body.get('avatar') or ''
-    if not usuario_q or not avatar: return jsonify({'ok': False, 'error': 'Datos incompletos'})
+    u = (body.get('usuario') or '').strip()
+    av = body.get('avatar') or ''
+    if not u or not av: return jsonify({'ok': False, 'error': 'Datos incompletos'})
     db = get_db()
-    result = execute_one(db, 'SELECT id FROM usuarios WHERE usuario=:u', {'u': usuario_q})
-    if not result: return jsonify({'ok': False, 'error': 'Usuario no encontrado'})
-    execute(db, 'UPDATE usuarios SET avatar=:a WHERE usuario=:u', {'a': avatar, 'u': usuario_q})
+    if not q1(db, 'SELECT id FROM usuarios WHERE usuario=:u', {'u': u}):
+        return jsonify({'ok': False, 'error': 'Usuario no encontrado'})
+    q(db, 'UPDATE usuarios SET avatar=:a WHERE usuario=:u', {'a': av, 'u': u})
     db.commit()
     return jsonify({'ok': True})
 
-@app.route('/api/usuario/posicion', methods=['GET'])
-def usuario_posicion():
-    usuario_q = request.args.get('usuario','').strip()
+# ── POSICIÓN Y HISTORIAL ───────────────────────────────────────────────────────
+
+@app.route('/api/usuario/posicion')
+def posicion():
+    u = request.args.get('usuario','').strip()
+    slug = request.args.get('boliche','').strip()
     db = get_db()
-    u = execute_one(db, 'SELECT id FROM usuarios WHERE usuario=:u', {'u': usuario_q})
-    if not u: return jsonify({'posicion_noche': None, 'posicion_historico': None})
-    evento = execute_one(db, 'SELECT id FROM eventos WHERE activo=TRUE LIMIT 1')
+    user = q1(db, 'SELECT id FROM usuarios WHERE usuario=:u', {'u': u})
+    if not user: return jsonify({'posicion_noche': None, 'posicion_historico': None})
+    b = q1(db, 'SELECT id FROM boliches WHERE slug=:s', {'s': slug})
+    if not b: return jsonify({'posicion_noche': None, 'posicion_historico': None})
+    bu = q1(db, 'SELECT id FROM boliche_usuarios WHERE usuario_id=:uid AND boliche_id=:bid',
+            {'uid': str(user['id']), 'bid': str(b['id'])})
+    if not bu: return jsonify({'posicion_noche': None, 'posicion_historico': None})
+    buid = str(bu['id'])
+    ev = q1(db, 'SELECT id FROM eventos WHERE boliche_id=:bid AND activo=TRUE LIMIT 1', {'bid': str(b['id'])})
     pos_noche = None
-    if evento:
-        rows = execute(db, 'SELECT usuario_id FROM ranking_noche WHERE evento_id=:e ORDER BY consumo_pesos DESC', {'e': str(evento['id'])})
-        for i, r in enumerate(rows):
-            if str(r['usuario_id']) == str(u['id']): pos_noche = i+1; break
-    hist = execute(db, 'SELECT usuario_id FROM ranking_noche GROUP BY usuario_id ORDER BY SUM(consumo_pesos) DESC')
+    if ev:
+        rows = q(db, 'SELECT boliche_usuario_id FROM ranking_noche WHERE evento_id=:eid ORDER BY consumo_pesos DESC', {'eid': str(ev['id'])})
+        for i,r in enumerate(rows):
+            if str(r['boliche_usuario_id']) == buid: pos_noche=i+1; break
+    hist = q(db, '''SELECT boliche_usuario_id FROM ranking_noche rn
+                    JOIN eventos e ON e.id=rn.evento_id
+                    WHERE e.boliche_id=:bid
+                    GROUP BY boliche_usuario_id ORDER BY SUM(consumo_pesos) DESC''', {'bid': str(b['id'])})
     pos_hist = None
-    for i, r in enumerate(hist):
-        if str(r['usuario_id']) == str(u['id']): pos_hist = i+1; break
+    for i,r in enumerate(hist):
+        if str(r['boliche_usuario_id']) == buid: pos_hist=i+1; break
     return jsonify({'posicion_noche': pos_noche, 'posicion_historico': pos_hist})
 
-@app.route('/api/usuario/historial', methods=['GET'])
-def usuario_historial():
-    usuario_q = request.args.get('usuario','').strip()
+@app.route('/api/usuario/historial')
+def historial():
+    u = request.args.get('usuario','').strip()
+    slug = request.args.get('boliche','').strip()
     db = get_db()
-    u = execute_one(db, 'SELECT id FROM usuarios WHERE usuario=:u', {'u': usuario_q})
-    if not u: return jsonify([])
-    rows = execute(db, '''
-        SELECT v.puntos_asistencia, v.puntos_consumo, v.puntos_racha, v.puntos_mesa,
-               e.fecha::text as fecha, e.nombre as evento_nombre,
-               (v.puntos_asistencia+v.puntos_consumo+v.puntos_racha+v.puntos_mesa) as total_pts
-        FROM visitas v JOIN eventos e ON e.id=v.evento_id
-        WHERE v.usuario_id=:uid ORDER BY e.fecha DESC LIMIT 30
-    ''', {'uid': str(u['id'])})
+    user = q1(db, 'SELECT id FROM usuarios WHERE usuario=:u', {'u': u})
+    if not user: return jsonify([])
+    b = q1(db, 'SELECT id FROM boliches WHERE slug=:s', {'s': slug})
+    if not b: return jsonify([])
+    bu = q1(db, 'SELECT id FROM boliche_usuarios WHERE usuario_id=:uid AND boliche_id=:bid',
+            {'uid': str(user['id']), 'bid': str(b['id'])})
+    if not bu: return jsonify([])
+    rows = q(db, '''SELECT e.fecha::text as fecha, e.nombre as evento_nombre,
+                           v.pts_asistencia,v.pts_consumo,v.pts_racha,v.pts_mesa,
+                           (v.pts_asistencia+v.pts_consumo+v.pts_racha+v.pts_mesa) as total_pts
+                    FROM visitas v JOIN eventos e ON e.id=v.evento_id
+                    WHERE v.boliche_usuario_id=:buid ORDER BY e.fecha DESC LIMIT 30''',
+             {'buid': str(bu['id'])})
     return jsonify([dict(r) for r in rows])
-
-# ── VISITAS ────────────────────────────────────────────────────────────────────
-
-@app.route('/api/visitas', methods=['POST'])
-def registrar_visita():
-    if not require_admin(): return jsonify({'ok': False}), 401
-    body = request.get_json() or {}
-    usuario_id = body.get('usuario_id')
-    consumo_pesos = int(body.get('consumo_pesos', 0))
-    origen = body.get('origen', 'caja')
-    db = get_db()
-    evento = execute_one(db, 'SELECT id FROM eventos WHERE activo=TRUE LIMIT 1')
-    if not evento: return jsonify({'ok': False, 'error': 'No hay evento activo. Abrí una noche primero.'}), 400
-    config = get_config()
-    racha = calcular_racha(usuario_id)
-    pts_asistencia = config.get('puntos_asistencia', 20)
-    pts_mesa = config.get('puntos_mesa', 30) if origen == 'mesa' else 0
-    pts_consumo = (consumo_pesos // 1000) * config.get('puntos_por_mil_pesos', 1)
-    pts_racha = 0
-    if racha >= 4: pts_racha = config.get('puntos_racha_mes', 150)
-    elif racha >= 3: pts_racha = config.get('puntos_racha_3', 50)
-    total_pts = pts_asistencia + pts_mesa + pts_consumo + pts_racha
-    execute(db, '''INSERT INTO visitas (usuario_id,evento_id,puntos_asistencia,puntos_consumo,puntos_racha,puntos_mesa,consumo_pesos,es_mesa,origen)
-        VALUES (:uid,:eid,:pa,:pc,:pr,:pm,:cp,:em,:or)''',
-        {'uid': usuario_id, 'eid': str(evento['id']), 'pa': pts_asistencia, 'pc': pts_consumo,
-         'pr': pts_racha, 'pm': pts_mesa, 'cp': consumo_pesos, 'em': origen=='mesa', 'or': origen})
-    existing = execute_one(db, 'SELECT id FROM ranking_noche WHERE usuario_id=:uid AND evento_id=:eid',
-                          {'uid': usuario_id, 'eid': str(evento['id'])})
-    if existing:
-        execute(db, 'UPDATE ranking_noche SET consumo_pesos=consumo_pesos+:cp WHERE id=:id',
-               {'cp': consumo_pesos, 'id': str(existing['id'])})
-    else:
-        execute(db, 'INSERT INTO ranking_noche (usuario_id,evento_id,consumo_pesos) VALUES (:uid,:eid,:cp)',
-               {'uid': usuario_id, 'eid': str(evento['id']), 'cp': consumo_pesos})
-    execute(db, 'UPDATE usuarios SET puntos_total=puntos_total+:pts WHERE id=:id', {'pts': total_pts, 'id': usuario_id})
-    row = execute_one(db, 'SELECT puntos_total FROM usuarios WHERE id=:id', {'id': usuario_id})
-    nivel = calcular_nivel(row['puntos_total'])
-    execute(db, 'UPDATE usuarios SET nivel=:n WHERE id=:id', {'n': nivel, 'id': usuario_id})
-    db.commit()
-    return jsonify({'ok': True, 'puntos_sumados': total_pts, 'puntos_total': row['puntos_total'], 'nivel': nivel})
 
 # ── EVENTOS ────────────────────────────────────────────────────────────────────
 
-@app.route('/api/eventos', methods=['GET'])
-def get_eventos():
+@app.route('/api/eventos/activo')
+def evento_activo():
+    slug = request.args.get('boliche','').strip()
     db = get_db()
-    rows = execute(db, 'SELECT id,fecha::text as fecha,nombre,activo,ganador FROM eventos ORDER BY fecha DESC LIMIT 50')
-    return jsonify([safe_dict(r) for r in rows])
+    b = q1(db, 'SELECT id FROM boliches WHERE slug=:s', {'s': slug})
+    if not b: return jsonify(None)
+    row = q1(db, 'SELECT id,fecha::text as fecha,nombre FROM eventos WHERE boliche_id=:bid AND activo=TRUE LIMIT 1',
+             {'bid': str(b['id'])})
+    return jsonify(safe(row))
 
-@app.route('/api/eventos', methods=['POST'])
+@app.route('/api/admin/eventos')
+def get_eventos():
+    admin = require_admin()
+    if not admin: return jsonify({'ok': False}), 401
+    db = get_db()
+    rows = q(db, 'SELECT id,fecha::text as fecha,nombre,activo,ganador FROM eventos WHERE boliche_id=:bid ORDER BY fecha DESC LIMIT 50',
+             {'bid': admin['boliche_id']})
+    return jsonify([safe(r) for r in rows])
+
+@app.route('/api/admin/eventos', methods=['POST'])
 def crear_evento():
-    if not require_admin(): return jsonify({'ok': False}), 401
+    admin = require_admin()
+    if not admin: return jsonify({'ok': False}), 401
     body = request.get_json() or {}
     db = get_db()
-    execute(db, 'UPDATE eventos SET activo=FALSE WHERE activo=TRUE')
-    execute(db, 'INSERT INTO eventos (fecha,nombre,activo) VALUES (:f,:n,TRUE)',
-            {'f': body.get('fecha'), 'n': body.get('nombre','')})
+    q(db, 'UPDATE eventos SET activo=FALSE WHERE boliche_id=:bid AND activo=TRUE', {'bid': admin['boliche_id']})
+    q(db, 'INSERT INTO eventos (boliche_id,fecha,nombre,activo) VALUES (:bid,:f,:n,TRUE)',
+      {'bid': admin['boliche_id'], 'f': body.get('fecha'), 'n': body.get('nombre','')})
     db.commit()
     return jsonify({'ok': True})
 
-@app.route('/api/eventos/<evento_id>/cerrar', methods=['POST'])
-def cerrar_evento(evento_id):
-    if not require_admin(): return jsonify({'ok': False}), 401
+@app.route('/api/admin/eventos/<eid>/cerrar', methods=['POST'])
+def cerrar_evento(eid):
+    admin = require_admin()
+    if not admin: return jsonify({'ok': False}), 401
     db = get_db()
-    execute(db, 'UPDATE eventos SET activo=FALSE WHERE id=:id', {'id': evento_id})
+    q(db, 'UPDATE eventos SET activo=FALSE WHERE id=:id AND boliche_id=:bid', {'id': eid, 'bid': admin['boliche_id']})
     db.commit()
     return jsonify({'ok': True})
 
-@app.route('/api/eventos/activo', methods=['GET'])
-def evento_activo():
+# ── USUARIOS ADMIN ─────────────────────────────────────────────────────────────
+
+@app.route('/api/admin/usuarios')
+def get_usuarios_admin():
+    admin = require_admin()
+    if not admin: return jsonify({'ok': False}), 401
     db = get_db()
-    row = execute_one(db, 'SELECT id,fecha::text as fecha,nombre FROM eventos WHERE activo=TRUE LIMIT 1')
-    if not row: return jsonify(None)
-    return jsonify(safe_dict(row))
+    rows = q(db, '''SELECT u.id,u.usuario,u.dni,bu.nombre_display,bu.jaggercitos,bu.nivel,bu.id as bu_id
+                    FROM boliche_usuarios bu JOIN usuarios u ON u.id=bu.usuario_id
+                    WHERE bu.boliche_id=:bid ORDER BY bu.jaggercitos DESC''',
+             {'bid': admin['boliche_id']})
+    return jsonify([safe(r) for r in rows])
+
+@app.route('/api/admin/usuarios/buscar')
+def buscar_usuario_admin():
+    sq = request.args.get('q','').strip()
+    admin = require_admin()
+    if not admin: return jsonify({'usuario': None}), 401
+    if not sq: return jsonify({'usuario': None})
+    db = get_db()
+    row = q1(db, '''SELECT u.id,u.usuario,u.dni,bu.nombre_display,bu.jaggercitos,bu.nivel,bu.id as bu_id
+                    FROM boliche_usuarios bu JOIN usuarios u ON u.id=bu.usuario_id
+                    WHERE bu.boliche_id=:bid AND (u.usuario ILIKE :q OR u.dni=:d) LIMIT 1''',
+             {'bid': admin['boliche_id'], 'q': f'%{sq}%', 'd': sq})
+    return jsonify({'usuario': safe(row)})
+
+@app.route('/api/admin/usuarios/<bu_id>/puntos', methods=['POST'])
+def ajustar_puntos(bu_id):
+    admin = require_admin()
+    if not admin: return jsonify({'ok': False}), 401
+    delta = int((request.get_json() or {}).get('delta', 0))
+    db = get_db()
+    q(db, 'UPDATE boliche_usuarios SET jaggercitos=GREATEST(0,jaggercitos+:d) WHERE id=:id AND boliche_id=:bid',
+      {'d': delta, 'id': bu_id, 'bid': admin['boliche_id']})
+    row = q1(db, 'SELECT jaggercitos FROM boliche_usuarios WHERE id=:id', {'id': bu_id})
+    nv = nivel(row['jaggercitos'])
+    q(db, 'UPDATE boliche_usuarios SET nivel=:n WHERE id=:id', {'n': nv, 'id': bu_id})
+    db.commit()
+    return jsonify({'ok': True, 'jaggercitos': row['jaggercitos'], 'nivel': nv})
+
+@app.route('/api/admin/usuarios/<bu_id>/nombre-display', methods=['POST'])
+def nombre_display(bu_id):
+    admin = require_admin(['owner','staff'])
+    if not admin: return jsonify({'ok': False}), 401
+    nombre = (request.get_json() or {}).get('nombre_display','').strip()
+    db = get_db()
+    q(db, 'UPDATE boliche_usuarios SET nombre_display=:n WHERE id=:id AND boliche_id=:bid',
+      {'n': nombre, 'id': bu_id, 'bid': admin['boliche_id']})
+    db.commit()
+    return jsonify({'ok': True})
+
+# ── VISITAS ────────────────────────────────────────────────────────────────────
+
+@app.route('/api/admin/visitas', methods=['POST'])
+def registrar_visita():
+    admin = require_admin()
+    if not admin: return jsonify({'ok': False}), 401
+    body = request.get_json() or {}
+    bu_id = body.get('bu_id')
+    consumo = int(body.get('consumo_pesos', 0))
+    origen = body.get('origen', 'caja')
+    bid = admin['boliche_id']
+    db = get_db()
+    ev = q1(db, 'SELECT id FROM eventos WHERE boliche_id=:bid AND activo=TRUE LIMIT 1', {'bid': bid})
+    if not ev: return jsonify({'ok': False, 'error': 'No hay evento activo. Abrí una noche primero.'}), 400
+    c = cfg(bid)
+    racha = len(q(db, 'SELECT id FROM visitas WHERE boliche_usuario_id=:buid', {'buid': bu_id}))
+    pa = c.get('pts_asistencia', 20)
+    pm = c.get('pts_mesa', 30) if origen == 'mesa' else 0
+    pc = (consumo // 1000) * c.get('pts_por_mil', 1)
+    pr = c.get('pts_racha_mes',150) if racha>=4 else (c.get('pts_racha_3',50) if racha>=3 else 0)
+    total = pa + pm + pc + pr
+    eid = str(ev['id'])
+    q(db, '''INSERT INTO visitas (boliche_usuario_id,evento_id,pts_asistencia,pts_consumo,pts_racha,pts_mesa,consumo_pesos,es_mesa,origen)
+        VALUES (:buid,:eid,:pa,:pc,:pr,:pm,:cp,:em,:or)''',
+      {'buid': bu_id,'eid': eid,'pa': pa,'pc': pc,'pr': pr,'pm': pm,'cp': consumo,'em': origen=='mesa','or': origen})
+    ex = q1(db, 'SELECT id FROM ranking_noche WHERE boliche_usuario_id=:buid AND evento_id=:eid', {'buid': bu_id,'eid': eid})
+    if ex:
+        q(db, 'UPDATE ranking_noche SET consumo_pesos=consumo_pesos+:cp WHERE id=:id', {'cp': consumo,'id': str(ex['id'])})
+    else:
+        q(db, 'INSERT INTO ranking_noche (boliche_usuario_id,evento_id,consumo_pesos) VALUES (:buid,:eid,:cp)',
+          {'buid': bu_id,'eid': eid,'cp': consumo})
+    q(db, 'UPDATE boliche_usuarios SET jaggercitos=jaggercitos+:t WHERE id=:id', {'t': total,'id': bu_id})
+    row = q1(db, 'SELECT jaggercitos FROM boliche_usuarios WHERE id=:id', {'id': bu_id})
+    nv = nivel(row['jaggercitos'])
+    q(db, 'UPDATE boliche_usuarios SET nivel=:n WHERE id=:id', {'n': nv,'id': bu_id})
+    db.commit()
+    return jsonify({'ok': True,'pts_sumados': total,'jaggercitos': row['jaggercitos'],'nivel': nv})
 
 # ── RANKING ────────────────────────────────────────────────────────────────────
 
-@app.route('/api/ranking/noche', methods=['GET'])
+@app.route('/api/ranking/noche')
 def ranking_noche():
+    slug = request.args.get('boliche','').strip()
     db = get_db()
-    evento = execute_one(db, 'SELECT id FROM eventos WHERE activo=TRUE LIMIT 1')
-    if not evento: return jsonify([])
-    rows = execute(db, '''
-        SELECT r.consumo_pesos, r.gano_botella, r.puntos_bonus,
-               COALESCE(u.nombre_display, u.usuario) as usuario
-        FROM ranking_noche r JOIN usuarios u ON u.id=r.usuario_id
-        WHERE r.evento_id=:eid ORDER BY r.consumo_pesos DESC
-    ''', {'eid': str(evento['id'])})
+    b = q1(db, 'SELECT id FROM boliches WHERE slug=:s', {'s': slug})
+    if not b: return jsonify([])
+    ev = q1(db, 'SELECT id FROM eventos WHERE boliche_id=:bid AND activo=TRUE LIMIT 1', {'bid': str(b['id'])})
+    if not ev: return jsonify([])
+    rows = q(db, '''SELECT rn.consumo_pesos,rn.gano_botella,rn.pts_bonus,
+                           COALESCE(bu.nombre_display, u.usuario) as nombre
+                    FROM ranking_noche rn
+                    JOIN boliche_usuarios bu ON bu.id=rn.boliche_usuario_id
+                    JOIN usuarios u ON u.id=bu.usuario_id
+                    WHERE rn.evento_id=:eid ORDER BY rn.consumo_pesos DESC''', {'eid': str(ev['id'])})
     return jsonify([dict(r) for r in rows])
 
-@app.route('/api/ranking/declarar-ganador', methods=['POST'])
-def declarar_ganador():
-    if not require_admin(): return jsonify({'ok': False}), 401
-    db = get_db()
-    evento = execute_one(db, 'SELECT id FROM eventos WHERE activo=TRUE LIMIT 1')
-    if not evento: return jsonify({'ok': False, 'error': 'No hay evento activo'})
-    config = get_config()
-    top = execute(db, '''
-        SELECT r.id, r.usuario_id, COALESCE(u.nombre_display, u.usuario) as usuario
-        FROM ranking_noche r JOIN usuarios u ON u.id=r.usuario_id
-        WHERE r.evento_id=:eid ORDER BY r.consumo_pesos DESC LIMIT 3
-    ''', {'eid': str(evento['id'])})
-    if not top: return jsonify({'ok': False, 'error': 'Sin participantes'})
-    bonuses = [config.get('bonus_ganador_noche',300), config.get('bonus_segundo',150), config.get('bonus_tercero',75)]
-    for i, row in enumerate(top):
-        execute(db, 'UPDATE ranking_noche SET posicion=:p,puntos_bonus=:b,gano_botella=:g WHERE id=:id',
-               {'p': i+1, 'b': bonuses[i], 'g': i==0, 'id': str(row['id'])})
-        execute(db, 'UPDATE usuarios SET puntos_total=puntos_total+:b WHERE id=:id',
-               {'b': bonuses[i], 'id': str(row['usuario_id'])})
-    execute(db, 'UPDATE eventos SET ganador=:g WHERE id=:id', {'g': top[0]['usuario'], 'id': str(evento['id'])})
-    db.commit()
-    return jsonify({'ok': True, 'ganador': top[0]['usuario']})
-
-@app.route('/api/ranking/historico', methods=['GET'])
+@app.route('/api/ranking/historico')
 def ranking_historico():
+    slug = request.args.get('boliche','').strip()
     db = get_db()
-    rows = execute(db, '''
-        SELECT COALESCE(u.nombre_display, u.usuario) as usuario,
-               SUM(r.consumo_pesos) as total_consumo, COUNT(r.id) as noches
-        FROM ranking_noche r JOIN usuarios u ON u.id=r.usuario_id
-        GROUP BY u.id, u.usuario, u.nombre_display ORDER BY total_consumo DESC LIMIT 50
-    ''')
+    b = q1(db, 'SELECT id FROM boliches WHERE slug=:s', {'s': slug})
+    if not b: return jsonify([])
+    rows = q(db, '''SELECT COALESCE(bu.nombre_display,u.usuario) as nombre,
+                           SUM(rn.consumo_pesos) as total_consumo, COUNT(rn.id) as noches
+                    FROM ranking_noche rn
+                    JOIN boliche_usuarios bu ON bu.id=rn.boliche_usuario_id
+                    JOIN usuarios u ON u.id=bu.usuario_id
+                    JOIN eventos e ON e.id=rn.evento_id
+                    WHERE e.boliche_id=:bid
+                    GROUP BY bu.id,bu.nombre_display,u.usuario
+                    ORDER BY total_consumo DESC LIMIT 50''', {'bid': str(b['id'])})
     return jsonify([dict(r) for r in rows])
+
+@app.route('/api/admin/ranking/declarar-ganador', methods=['POST'])
+def declarar_ganador():
+    admin = require_admin()
+    if not admin: return jsonify({'ok': False}), 401
+    bid = admin['boliche_id']
+    db = get_db()
+    ev = q1(db, 'SELECT id FROM eventos WHERE boliche_id=:bid AND activo=TRUE LIMIT 1', {'bid': bid})
+    if not ev: return jsonify({'ok': False,'error': 'No hay evento activo'})
+    c = cfg(bid)
+    top = q(db, '''SELECT rn.id,rn.boliche_usuario_id,COALESCE(bu.nombre_display,u.usuario) as nombre
+                   FROM ranking_noche rn
+                   JOIN boliche_usuarios bu ON bu.id=rn.boliche_usuario_id
+                   JOIN usuarios u ON u.id=bu.usuario_id
+                   WHERE rn.evento_id=:eid ORDER BY rn.consumo_pesos DESC LIMIT 3''', {'eid': str(ev['id'])})
+    if not top: return jsonify({'ok': False,'error': 'Sin participantes'})
+    bonuses = [c.get('bonus_ganador',300), c.get('bonus_segundo',150), c.get('bonus_tercero',75)]
+    for i,row in enumerate(top):
+        q(db, 'UPDATE ranking_noche SET posicion=:p,pts_bonus=:b,gano_botella=:g WHERE id=:id',
+          {'p': i+1,'b': bonuses[i],'g': i==0,'id': str(row['id'])})
+        q(db, 'UPDATE boliche_usuarios SET jaggercitos=jaggercitos+:b WHERE id=:id',
+          {'b': bonuses[i],'id': str(row['boliche_usuario_id'])})
+    q(db, 'UPDATE eventos SET ganador=:g WHERE id=:id', {'g': top[0]['nombre'],'id': str(ev['id'])})
+    db.commit()
+    return jsonify({'ok': True,'ganador': top[0]['nombre']})
 
 # ── PREMIOS ────────────────────────────────────────────────────────────────────
 
-@app.route('/api/premios', methods=['GET'])
+@app.route('/api/premios')
 def get_premios():
+    slug = request.args.get('boliche','').strip()
     db = get_db()
-    rows = execute(db, 'SELECT id,nombre,categoria,precio_pesos,puntos_necesarios,activo FROM premios ORDER BY categoria,precio_pesos')
-    return jsonify([safe_dict(r) for r in rows])
+    b = q1(db, 'SELECT id FROM boliches WHERE slug=:s', {'s': slug})
+    if not b: return jsonify([])
+    rows = q(db, 'SELECT id,nombre,categoria,precio_pesos,pts_necesarios,activo FROM premios WHERE boliche_id=:bid ORDER BY categoria,precio_pesos',
+             {'bid': str(b['id'])})
+    return jsonify([safe(r) for r in rows])
 
-@app.route('/api/premios', methods=['POST'])
+@app.route('/api/admin/premios')
+def get_premios_admin():
+    admin = require_admin()
+    if not admin: return jsonify({'ok': False}), 401
+    db = get_db()
+    rows = q(db, 'SELECT id,nombre,categoria,precio_pesos,pts_necesarios,activo FROM premios WHERE boliche_id=:bid ORDER BY categoria,precio_pesos',
+             {'bid': admin['boliche_id']})
+    return jsonify([safe(r) for r in rows])
+
+@app.route('/api/admin/premios', methods=['POST'])
 def agregar_premio():
-    if not require_admin(): return jsonify({'ok': False}), 401
+    admin = require_admin(['owner'])
+    if not admin: return jsonify({'ok': False}), 401
     body = request.get_json() or {}
     db = get_db()
-    execute(db, 'INSERT INTO premios (nombre,categoria,precio_pesos,puntos_necesarios) VALUES (:n,:c,:p,:pts)',
-            {'n': body['nombre'], 'c': body.get('categoria',''), 'p': int(body.get('precio_pesos',0)), 'pts': int(body.get('puntos_necesarios',0))})
+    q(db, 'INSERT INTO premios (boliche_id,nombre,categoria,precio_pesos,pts_necesarios) VALUES (:bid,:n,:c,:p,:pts)',
+      {'bid': admin['boliche_id'],'n': body['nombre'],'c': body.get('categoria',''),
+       'p': int(body.get('precio_pesos',0)),'pts': int(body.get('pts_necesarios',0))})
     db.commit()
     return jsonify({'ok': True})
 
-@app.route('/api/premios/<premio_id>', methods=['PUT'])
-def actualizar_premio(premio_id):
-    if not require_admin(): return jsonify({'ok': False}), 401
+@app.route('/api/admin/premios/<pid>', methods=['PUT'])
+def actualizar_premio(pid):
+    admin = require_admin(['owner'])
+    if not admin: return jsonify({'ok': False}), 401
     body = request.get_json() or {}
     db = get_db()
-    if 'puntos_necesarios' in body:
-        execute(db, 'UPDATE premios SET puntos_necesarios=:p WHERE id=:id', {'p': int(body['puntos_necesarios']), 'id': premio_id})
+    if 'pts_necesarios' in body:
+        q(db, 'UPDATE premios SET pts_necesarios=:p WHERE id=:id AND boliche_id=:bid',
+          {'p': int(body['pts_necesarios']),'id': pid,'bid': admin['boliche_id']})
     if 'activo' in body:
-        execute(db, 'UPDATE premios SET activo=:a WHERE id=:id', {'a': body['activo'], 'id': premio_id})
+        q(db, 'UPDATE premios SET activo=:a WHERE id=:id AND boliche_id=:bid',
+          {'a': body['activo'],'id': pid,'bid': admin['boliche_id']})
     db.commit()
     return jsonify({'ok': True})
 
@@ -358,93 +532,132 @@ def actualizar_premio(premio_id):
 def crear_canje():
     body = request.get_json() or {}
     usuario_q = body.get('usuario','').strip()
+    slug = body.get('boliche','').strip()
     premio_id = body.get('premio_id')
     db = get_db()
-    u = execute_one(db, 'SELECT id,puntos_total FROM usuarios WHERE usuario=:u', {'u': usuario_q})
-    if not u: return jsonify({'ok': False, 'error': 'Usuario no encontrado'})
-    p = execute_one(db, 'SELECT * FROM premios WHERE id=:id AND activo=TRUE', {'id': str(premio_id)})
-    if not p: return jsonify({'ok': False, 'error': 'Premio no disponible'})
-    if u['puntos_total'] < p['puntos_necesarios']:
-        return jsonify({'ok': False, 'error': 'No tenés suficientes jaggercitos'})
+    u = q1(db, 'SELECT id FROM usuarios WHERE usuario=:u', {'u': usuario_q})
+    if not u: return jsonify({'ok': False,'error': 'Usuario no encontrado'})
+    b = q1(db, 'SELECT id FROM boliches WHERE slug=:s', {'s': slug})
+    if not b: return jsonify({'ok': False,'error': 'Boliche no encontrado'})
+    bu = q1(db, 'SELECT id,jaggercitos FROM boliche_usuarios WHERE usuario_id=:uid AND boliche_id=:bid',
+            {'uid': str(u['id']),'bid': str(b['id'])})
+    if not bu: return jsonify({'ok': False,'error': 'No estás en este boliche'})
+    p = q1(db, 'SELECT id,pts_necesarios,nombre FROM premios WHERE id=:id AND boliche_id=:bid AND activo=TRUE',
+           {'id': str(premio_id),'bid': str(b['id'])})
+    if not p: return jsonify({'ok': False,'error': 'Premio no disponible'})
+    if bu['jaggercitos'] < p['pts_necesarios']:
+        return jsonify({'ok': False,'error': 'No tenés suficientes jaggercitos'})
     codigo = secrets.token_hex(4).upper()
-    execute(db, 'INSERT INTO canjes (usuario_id,premio_id,codigo_unico) VALUES (:uid,:pid,:c)',
-            {'uid': str(u['id']), 'pid': str(p['id']), 'c': codigo})
-    execute(db, 'UPDATE usuarios SET puntos_total=puntos_total-:p WHERE id=:id',
-            {'p': p['puntos_necesarios'], 'id': str(u['id'])})
+    q(db, 'INSERT INTO canjes (boliche_usuario_id,premio_id,codigo_unico) VALUES (:buid,:pid,:c)',
+      {'buid': str(bu['id']),'pid': str(p['id']),'c': codigo})
+    q(db, 'UPDATE boliche_usuarios SET jaggercitos=jaggercitos-:p WHERE id=:id',
+      {'p': p['pts_necesarios'],'id': str(bu['id'])})
     db.commit()
-    return jsonify({'ok': True, 'codigo': codigo})
+    return jsonify({'ok': True,'codigo': codigo})
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
 
-@app.route('/api/config', methods=['GET'])
+@app.route('/api/admin/config')
 def get_config_api():
+    admin = require_admin()
+    if not admin: return jsonify({'ok': False}), 401
     db = get_db()
-    rows = execute(db, 'SELECT * FROM config_puntos ORDER BY clave')
+    rows = q(db, 'SELECT clave,valor,descripcion FROM config_puntos WHERE boliche_id=:bid ORDER BY clave',
+             {'bid': admin['boliche_id']})
     return jsonify([dict(r) for r in rows])
 
-@app.route('/api/config/<clave>', methods=['PUT'])
+@app.route('/api/admin/config/<clave>', methods=['PUT'])
 def update_config(clave):
-    if not require_admin(): return jsonify({'ok': False}), 401
+    admin = require_admin(['owner'])
+    if not admin: return jsonify({'ok': False}), 401
     body = request.get_json() or {}
     db = get_db()
-    execute(db, 'UPDATE config_puntos SET valor=:v WHERE clave=:c', {'v': int(body['valor']), 'c': clave})
+    q(db, 'UPDATE config_puntos SET valor=:v WHERE clave=:c AND boliche_id=:bid',
+      {'v': int(body['valor']),'c': clave,'bid': admin['boliche_id']})
     db.commit()
     return jsonify({'ok': True})
 
-# ── EXTERNAL API ───────────────────────────────────────────────────────────────
+# ── SUPER ADMIN ────────────────────────────────────────────────────────────────
+
+@app.route('/api/superadmin/boliches')
+def sa_boliches():
+    if not require_super(): return jsonify({'ok': False}), 401
+    db = get_db()
+    rows = q(db, 'SELECT id,nombre,slug,activo,plan,created_at::text FROM boliches ORDER BY created_at DESC')
+    return jsonify([safe(r) for r in rows])
+
+@app.route('/api/superadmin/boliches', methods=['POST'])
+def sa_crear_boliche():
+    if not require_super(): return jsonify({'ok': False}), 401
+    body = request.get_json() or {}
+    db = get_db()
+    q(db, '''INSERT INTO boliches (nombre,slug,color_primario,color_secundario,descripcion)
+             VALUES (:n,:s,:c1,:c2,:d)''',
+      {'n': body['nombre'],'s': body['slug'],'c1': body.get('color_primario','#d4a829'),
+       'c2': body.get('color_secundario','#111111'),'d': body.get('descripcion','')})
+    bid = q1(db, 'SELECT id FROM boliches WHERE slug=:s', {'s': body['slug']})
+    configs = [
+        ('pts_asistencia',20,'Jaggercitos por ir'),('pts_mesa',30,'Bonus por mesa'),
+        ('pts_racha_3',50,'Bonus 3 semanas'),('pts_racha_mes',150,'Bonus 1 mes'),
+        ('pts_por_mil',1,'Jaggercitos por $1.000'),('bonus_ganador',300,'Bonus ganador'),
+        ('bonus_segundo',150,'Bonus segundo'),('bonus_tercero',75,'Bonus tercero'),
+    ]
+    for clave,valor,desc in configs:
+        q(db, 'INSERT INTO config_puntos (boliche_id,clave,valor,descripcion) VALUES (:bid,:c,:v,:d)',
+          {'bid': str(bid['id']),'c': clave,'v': valor,'d': desc})
+    if body.get('admin_email') and body.get('admin_password'):
+        q(db, 'INSERT INTO admins (boliche_id,email,password_hash,nombre,rol) VALUES (:bid,:e,:p,:n,:r)',
+          {'bid': str(bid['id']),'e': body['admin_email'],'p': hp(body['admin_password']),
+           'n': body.get('admin_nombre','Owner'),'r': 'owner'})
+    db.commit()
+    return jsonify({'ok': True})
+
+@app.route('/api/superadmin/boliches/<bid>/toggle', methods=['POST'])
+def sa_toggle_boliche(bid):
+    if not require_super(): return jsonify({'ok': False}), 401
+    db = get_db()
+    row = q1(db, 'SELECT activo FROM boliches WHERE id=:id', {'id': bid})
+    if not row: return jsonify({'ok': False}), 404
+    q(db, 'UPDATE boliches SET activo=:a WHERE id=:id', {'a': not row['activo'],'id': bid})
+    db.commit()
+    return jsonify({'ok': True,'activo': not row['activo']})
+
+# ── EXTERNAL API (ranking VIP → clubpass) ─────────────────────────────────────
 
 @app.route('/api/external/registrar', methods=['POST'])
 def external_registrar():
-    api_key = request.headers.get('X-API-Key')
-    if api_key != EXTERNAL_API_KEY: return jsonify({'ok': False}), 403
+    if request.headers.get('X-API-Key') != EXTERNAL_API_KEY:
+        return jsonify({'ok': False}), 403
     body = request.get_json() or {}
     usuario_q = body.get('usuario','').strip()
-    consumo_pesos = int(body.get('consumo_pesos', 0))
+    slug = body.get('boliche','club-jagger')
+    consumo = int(body.get('consumo_pesos', 0))
     origen = body.get('origen', 'caja')
     db = get_db()
-    usuario = execute_one(db, 'SELECT id FROM usuarios WHERE usuario ILIKE :u OR dni=:d LIMIT 1',
-                         {'u': usuario_q, 'd': usuario_q})
-    if not usuario: return jsonify({'ok': False, 'error': 'Usuario no encontrado'})
-    evento = execute_one(db, 'SELECT id FROM eventos WHERE activo=TRUE LIMIT 1')
-    if not evento: return jsonify({'ok': False, 'error': 'No hay evento activo'})
-    config = get_config()
-    pts_consumo = (consumo_pesos // 1000) * config.get('puntos_por_mil_pesos', 1)
-    pts_mesa = config.get('puntos_mesa', 30) if origen == 'mesa' else 0
-    total = pts_consumo + pts_mesa
-    execute(db, '''INSERT INTO visitas (usuario_id,evento_id,puntos_consumo,puntos_mesa,consumo_pesos,es_mesa,origen)
-        VALUES (:uid,:eid,:pc,:pm,:cp,:em,:or)''',
-        {'uid': str(usuario['id']), 'eid': str(evento['id']), 'pc': pts_consumo,
-         'pm': pts_mesa, 'cp': consumo_pesos, 'em': origen=='mesa', 'or': origen})
-    existing = execute_one(db, 'SELECT id FROM ranking_noche WHERE usuario_id=:uid AND evento_id=:eid',
-                          {'uid': str(usuario['id']), 'eid': str(evento['id'])})
-    if existing:
-        execute(db, 'UPDATE ranking_noche SET consumo_pesos=consumo_pesos+:cp WHERE id=:id',
-               {'cp': consumo_pesos, 'id': str(existing['id'])})
+    u = q1(db, 'SELECT id FROM usuarios WHERE usuario ILIKE :u OR dni=:d LIMIT 1', {'u': usuario_q,'d': usuario_q})
+    if not u: return jsonify({'ok': False,'error': 'Usuario no encontrado'})
+    b = q1(db, 'SELECT id FROM boliches WHERE slug=:s AND activo=TRUE', {'s': slug})
+    if not b: return jsonify({'ok': False,'error': 'Boliche no encontrado'})
+    bu = q1(db, 'SELECT id FROM boliche_usuarios WHERE usuario_id=:uid AND boliche_id=:bid',
+            {'uid': str(u['id']),'bid': str(b['id'])})
+    if not bu: return jsonify({'ok': False,'error': 'Usuario no está en este boliche'})
+    ev = q1(db, 'SELECT id FROM eventos WHERE boliche_id=:bid AND activo=TRUE LIMIT 1', {'bid': str(b['id'])})
+    if not ev: return jsonify({'ok': False,'error': 'No hay evento activo'})
+    c = cfg(str(b['id']))
+    pc = (consumo // 1000) * c.get('pts_por_mil', 1)
+    pm = c.get('pts_mesa',30) if origen=='mesa' else 0
+    total = pc + pm
+    buid, eid = str(bu['id']), str(ev['id'])
+    q(db, 'INSERT INTO visitas (boliche_usuario_id,evento_id,pts_consumo,pts_mesa,consumo_pesos,es_mesa,origen) VALUES (:buid,:eid,:pc,:pm,:cp,:em,:or)',
+      {'buid': buid,'eid': eid,'pc': pc,'pm': pm,'cp': consumo,'em': origen=='mesa','or': origen})
+    ex = q1(db, 'SELECT id FROM ranking_noche WHERE boliche_usuario_id=:buid AND evento_id=:eid', {'buid': buid,'eid': eid})
+    if ex:
+        q(db, 'UPDATE ranking_noche SET consumo_pesos=consumo_pesos+:cp WHERE id=:id', {'cp': consumo,'id': str(ex['id'])})
     else:
-        execute(db, 'INSERT INTO ranking_noche (usuario_id,evento_id,consumo_pesos) VALUES (:uid,:eid,:cp)',
-               {'uid': str(usuario['id']), 'eid': str(evento['id']), 'cp': consumo_pesos})
-    execute(db, 'UPDATE usuarios SET puntos_total=puntos_total+:t WHERE id=:id',
-            {'t': total, 'id': str(usuario['id'])})
+        q(db, 'INSERT INTO ranking_noche (boliche_usuario_id,evento_id,consumo_pesos) VALUES (:buid,:eid,:cp)', {'buid': buid,'eid': eid,'cp': consumo})
+    q(db, 'UPDATE boliche_usuarios SET jaggercitos=jaggercitos+:t WHERE id=:id', {'t': total,'id': buid})
     db.commit()
-    return jsonify({'ok': True, 'puntos_sumados': total})
-
-# ── PWA ────────────────────────────────────────────────────────────────────────
-
-@app.route('/cliente')
-def cliente():
-    client_path = os.path.join(os.path.dirname(__file__), 'client', 'index.html')
-    with open(client_path, encoding='utf-8') as f:
-        return f.read(), 200, {'Content-Type': 'text/html; charset=utf-8'}
-
-@app.route('/manifest.json')
-def manifest():
-    return jsonify({"name":"Jaggercitos","short_name":"Jaggercitos","start_url":"/cliente","display":"standalone","background_color":"#050505","theme_color":"#d4a829","orientation":"portrait"})
-
-@app.route('/sw.js')
-def service_worker():
-    return "self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>self.clients.claim());", 200, {'Content-Type':'application/javascript'}
+    return jsonify({'ok': True,'pts_sumados': total})
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5001))
-    app.run(host='0.0.0.0', port=port, debug=False)
-
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5001)), debug=False)
