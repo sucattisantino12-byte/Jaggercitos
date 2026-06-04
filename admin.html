@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jaggercitos — Admin</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Rajdhani:wght@400;500;600&display=swap');
+:root{
+  --gold:#d4a829;--gold-light:#f0c842;--gold-dim:#8a6d1a;--gold-bg:#1e1600;
+  --black:#050505;--surface:#131313;--surface2:#1c1c1c;--surface3:#242424;--border:#303030;
+  --text:#f5f1e3;--text-dim:#888;--text-muted:#555;
+  --danger:#c0392b;--green:#27ae60;--green-bg:#0a1f10;
+  --blue:#2980b9;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--black);color:var(--text);font-family:'Rajdhani',sans-serif;min-height:100vh;font-size:15px;}
+
+/* HEADER */
+.header{background:var(--surface);border-bottom:2px solid var(--gold-dim);padding:0 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;height:58px;}
+.logo{font-family:'Oswald',sans-serif;font-size:24px;color:var(--gold);letter-spacing:4px;font-weight:700;}
+.logo span{color:var(--text-muted);font-size:12px;margin-left:8px;letter-spacing:2px;font-weight:400;}
+.nav{display:flex;gap:2px;}
+.nav-btn{background:none;border:none;color:var(--text-dim);padding:10px 16px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;border-bottom:2px solid transparent;transition:all .2s;margin-bottom:-2px;}
+.nav-btn:hover{color:var(--text);border-bottom-color:var(--gold-dim);}
+.nav-btn.active{color:var(--gold);border-bottom-color:var(--gold);}
+
+/* SCREENS */
+.screen{display:none;padding:28px;max-width:1160px;margin:0 auto;}
+.screen.active{display:block;}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:20px;}
+.card-title{color:var(--gold-dim);font-size:10px;letter-spacing:3px;text-transform:uppercase;margin-bottom:18px;display:flex;align-items:center;gap:8px;}
+.card-title::after{content:'';flex:1;height:1px;background:var(--border);}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
+
+/* FORM */
+.row{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px;}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{color:var(--text-dim);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;}
+input,select{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px 14px;font-family:'Rajdhani',sans-serif;font-size:15px;outline:none;transition:border .15s,background .15s;}
+input:focus,select:focus{border-color:var(--gold);background:var(--surface3);}
+input::placeholder{color:var(--text-muted);}
+select option{background:var(--surface2);}
+
+/* BUTTONS */
+.btn{border:none;border-radius:8px;padding:10px 22px;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;cursor:pointer;text-transform:uppercase;transition:all .15s;white-space:nowrap;}
+.btn-gold{background:var(--gold);color:#000;}
+.btn-gold:hover{background:var(--gold-light);transform:translateY(-1px);}
+.btn-red{background:var(--danger);color:#fff;}
+.btn-red:hover{background:#e74c3c;}
+.btn-outline{background:none;border:1px solid var(--border);color:var(--text-dim);}
+.btn-outline:hover{border-color:var(--gold-dim);color:var(--gold);}
+.btn-sm{padding:6px 14px;font-size:11px;}
+
+/* TABLES */
+.table-wrap{overflow-x:auto;border-radius:8px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:14px;}
+thead{background:var(--surface2);}
+th{color:var(--text-dim);font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:12px 16px;text-align:left;white-space:nowrap;font-weight:700;}
+td{padding:12px 16px;border-top:1px solid var(--border);color:var(--text);vertical-align:middle;}
+tbody tr:hover td{background:var(--surface2);}
+tbody tr:first-child td{border-top:none;}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:1px;white-space:nowrap;}
+.badge-gold{background:var(--gold-bg);color:var(--gold);border:1px solid var(--gold-dim);}
+.badge-green{background:var(--green-bg);color:var(--green);border:1px solid #1a4a28;}
+.badge-red{background:#1f0a0a;color:#e74c3c;border:1px solid #4a1a1a;}
+.badge-gray{background:#1a1a1a;color:var(--text-muted);border:1px solid var(--border);}
+.badge-blue{background:#0a1520;color:var(--blue);border:1px solid #1a3550;}
+
+/* STATS */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px;}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;transition:border .2s;}
+.stat:hover{border-color:var(--gold-dim);}
+.stat-num{font-family:'Oswald',sans-serif;font-size:38px;color:var(--gold);line-height:1;margin-bottom:6px;}
+.stat-label{color:var(--text-dim);font-size:10px;letter-spacing:2px;text-transform:uppercase;}
+
+/* SEARCH RESULT */
+.search-result{background:var(--surface2);border:1px solid var(--gold-dim);border-radius:12px;padding:20px;margin-top:14px;display:none;}
+.user-card{display:flex;align-items:center;gap:16px;margin-bottom:18px;}
+.user-avatar{width:48px;height:48px;border-radius:50%;background:var(--gold-bg);border:2px solid var(--gold-dim);display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-size:20px;color:var(--gold);}
+.user-info-name{font-family:'Oswald',sans-serif;font-size:22px;color:var(--gold);}
+.user-info-pts{font-size:13px;color:var(--text-dim);margin-top:3px;}
+
+/* EVENTO BANNER */
+.evento-banner{background:linear-gradient(135deg,#0a1f10,#0d2b1a);border:1px solid var(--green);border-radius:12px;padding:18px 22px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.evento-dot{width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.evento-nombre{font-family:'Oswald',sans-serif;font-size:20px;color:var(--green);margin-left:10px;}
+
+/* PREMIOS POR CATEGORÍA */
+.cat-section{margin-bottom:24px;}
+.cat-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.cat-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;}
+.cat-name{font-family:'Oswald',sans-serif;font-size:16px;color:var(--text);letter-spacing:1px;}
+.cat-count{color:var(--text-muted);font-size:12px;}
+.premio-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;}
+.premio-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;transition:border .15s;}
+.premio-card:hover{border-color:var(--gold-dim);}
+.premio-card.inactivo{opacity:.45;}
+.premio-nombre{font-weight:600;font-size:14px;color:var(--text);margin-bottom:3px;}
+.premio-precio{font-family:'Oswald',sans-serif;font-size:17px;color:var(--text);font-weight:500;margin-top:3px;}
+.premio-pts-wrap{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.premio-pts-input{width:72px;text-align:center;padding:6px 8px;font-size:13px;}
+.premio-actions{display:flex;gap:6px;flex-shrink:0;}
+
+/* BUSCADOR PREMIOS */
+.search-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:20px;}
+.search-input{flex:1;min-width:200px;max-width:320px;}
+
+/* RANKING TOP */
+.ranking-top{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
+.ranking-podio{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;transition:border .2s;}
+.ranking-podio.pos-1{border-color:var(--gold-dim);background:var(--gold-bg);}
+.ranking-podio.pos-2{border-color:#666;}
+.ranking-podio.pos-3{border-color:#8b6914;}
+.podio-pos{font-family:'Oswald',sans-serif;font-size:32px;line-height:1;}
+.podio-pos.pos-1{color:var(--gold);}
+.podio-pos.pos-2{color:#aaa;}
+.podio-pos.pos-3{color:#cd7f32;}
+.podio-user{font-family:'Oswald',sans-serif;font-size:16px;margin:6px 0 4px;}
+.podio-consumo{font-size:13px;color:var(--text-dim);}
+
+/* LOGIN */
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;background:radial-gradient(ellipse at center,#1a1000 0%,var(--black) 70%);}
+.login-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:44px;width:360px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.6);}
+.login-logo{font-family:'Oswald',sans-serif;font-size:32px;color:var(--gold);letter-spacing:6px;margin-bottom:4px;}
+.login-sub{color:var(--text-muted);font-size:11px;letter-spacing:3px;margin-bottom:32px;text-transform:uppercase;}
+.login-divider{height:1px;background:var(--border);margin:20px 0;}
+.demo-badge{background:#1a0d2b;border:1px solid #7a3fc0;color:#b06cf0;padding:3px 10px;border-radius:4px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;}
+
+/* TOAST */
+.toast{position:fixed;bottom:28px;right:28px;background:var(--surface);border:1px solid var(--gold);color:var(--gold);padding:14px 22px;border-radius:10px;font-size:14px;font-weight:600;z-index:9999;display:none;box-shadow:0 8px 24px rgba(0,0,0,.5);animation:slideUp .3s ease;}
+@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* CONFIG */
+.config-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
+.config-item{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.config-desc{font-size:14px;color:var(--text);}
+.config-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+</style>
+</head>
+<body>
+
+{% if not session.get('admin') %}
+<div class="login-wrap">
+  <div class="login-box">
+    <div class="login-logo">JAGGERCITOS</div>
+    <div class="login-sub">Panel de Administración</div>
+    <div class="field" style="text-align:left;margin-bottom:14px;">
+      <label>Contraseña</label>
+      <input type="password" id="pwd" style="width:100%" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
+    </div>
+    <button class="btn btn-gold" style="width:100%;padding:13px;font-size:14px;margin-bottom:16px" onclick="login()">INGRESAR</button>
+    <div class="login-divider"></div>
+    <div style="color:var(--text-muted);font-size:12px">Demo: <b style="color:var(--text-dim)">jagger2024</b> &nbsp;<span class="demo-badge">LOCAL</span></div>
+    <div id="login-err" style="color:#e74c3c;font-size:13px;margin-top:12px;display:none;">⚠ Contraseña incorrecta</div>
+  </div>
+</div>
+{% else %}
+
+<div class="header">
+  <div style="display:flex;align-items:center;gap:14px">
+    <div class="logo">JAGGERCITOS <span>ADMIN</span></div>
+    <span class="demo-badge">DEMO LOCAL</span>
+  </div>
+  <div class="nav">
+    <button class="nav-btn active" onclick="showScreen('evento',this)">🌙 Evento</button>
+    <button class="nav-btn" onclick="showScreen('registrar',this)">➕ Registrar</button>
+    <button class="nav-btn" onclick="showScreen('usuarios',this)">👥 Usuarios</button>
+    <button class="nav-btn" onclick="showScreen('ranking',this)">🏆 Ranking</button>
+    <button class="nav-btn" onclick="showScreen('premios',this)">🎁 Premios</button>
+    <button class="nav-btn" onclick="showScreen('config',this)">⚙ Config</button>
+  </div>
+  <button class="btn btn-outline btn-sm" onclick="logout()">Salir</button>
+</div>
+
+<!-- ═══════════════════ EVENTO ═══════════════════ -->
+<div id="screen-evento" class="screen active">
+  <div id="evento-banner" class="evento-banner" style="display:none">
+    <div style="display:flex;align-items:center">
+      <div class="evento-dot"></div>
+      <div class="evento-nombre" id="ev-nombre-txt">—</div>
+      <div style="color:var(--text-dim);font-size:13px;margin-left:14px" id="ev-fecha-txt">—</div>
+    </div>
+    <button class="btn btn-red" onclick="cerrarEvento()">CERRAR NOCHE</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Abrir nueva noche</div>
+    <div class="row">
+      <div class="field">
+        <label>Nombre del evento</label>
+        <input type="text" id="inp-ev-nombre" style="width:260px" placeholder="Ej: Viernes 30 Mayo">
+      </div>
+      <div class="field">
+        <label>Fecha</label>
+        <input type="date" id="inp-ev-fecha" style="width:160px">
+      </div>
+      <button class="btn btn-gold" onclick="abrirEvento()">ABRIR NOCHE</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Historial de noches</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Fecha</th><th>Nombre</th><th>Estado</th><th>Ganador</th></tr></thead>
+        <tbody id="tbody-eventos"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ REGISTRAR ═══════════════════ -->
+<div id="screen-registrar" class="screen">
+  <div class="card">
+    <div class="card-title">Buscar usuario</div>
+    <div class="row">
+      <div class="field" style="flex:1;max-width:360px">
+        <label>Usuario o DNI</label>
+        <input type="text" id="inp-buscar" placeholder="Escribí el usuario o DNI..." oninput="buscarUsuario()" style="width:100%">
+      </div>
+    </div>
+    <div id="resultado-busqueda" class="search-result">
+      <div class="user-card">
+        <div class="user-avatar" id="res-avatar">?</div>
+        <div>
+          <div class="user-info-name" id="res-usuario">—</div>
+          <div class="user-info-pts" id="res-pts">—</div>
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:16px;display:flex;flex-direction:column;gap:16px;">
+        <div>
+          <div style="color:var(--text-dim);font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">Registrar visita</div>
+          <div class="row">
+            <div class="field">
+              <label>Consumo $</label>
+              <input type="number" id="inp-consumo" style="width:160px" placeholder="0" min="0">
+            </div>
+            <div class="field">
+              <label>Tipo</label>
+              <select id="inp-tipo" style="width:180px">
+                <option value="caja">Caja (sin mesa)</option>
+                <option value="mesa">Mesa</option>
+              </select>
+            </div>
+            <button class="btn btn-gold" onclick="registrarVisita()">REGISTRAR</button>
+          </div>
+        </div>
+        <div>
+          <div style="color:var(--text-dim);font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">Ajuste manual de puntos</div>
+          <div class="row">
+            <div class="field">
+              <label>Puntos (+ para sumar, - para restar)</label>
+              <input type="number" id="inp-ajuste" style="width:160px" placeholder="ej: 50 o -20">
+            </div>
+            <button class="btn btn-outline" onclick="ajustarPuntos()">APLICAR</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ USUARIOS ═══════════════════ -->
+<div id="screen-usuarios" class="screen">
+  <div class="stat-grid" id="stats-grid"></div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title" style="margin:0">Todos los usuarios</div>
+      <input type="text" placeholder="🔍  Buscar por usuario, nombre o DNI..." style="width:300px" oninput="filtrarUsuarios(this.value)">
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Usuario</th><th>Nombre</th><th>DNI</th><th>Jaggercitos</th><th>Nivel</th></tr></thead>
+        <tbody id="tbody-usuarios"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ RANKING ═══════════════════ -->
+<div id="screen-ranking" class="screen">
+  <div class="ranking-top" id="ranking-podio"></div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title" style="margin:0">Ranking completo — noche activa</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-gold" onclick="declararGanador()">🏆 DECLARAR GANADOR</button>
+        <button class="btn btn-outline btn-sm" onclick="cargarRanking()">↻ Actualizar</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Usuario</th><th>Consumo</th><th>Jaggercitos bonus</th><th>Estado</th></tr></thead>
+        <tbody id="tbody-ranking"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ PREMIOS ═══════════════════ -->
+<div id="screen-premios" class="screen">
+  <div class="card">
+    <div class="card-title">Agregar nuevo premio</div>
+    <div class="row">
+      <div class="field"><label>Nombre</label><input type="text" id="p-nombre" style="width:200px" placeholder="Ej: Black Label"></div>
+      <div class="field">
+        <label>Categoría</label>
+        <select id="p-cat" style="width:160px">
+          <option>Champagne</option>
+          <option>Bottle Service</option>
+          <option>Importados</option>
+          <option>Bebidas</option>
+          <option>Tragos</option>
+          <option>Shots</option>
+          <option>Otro</option>
+        </select>
+      </div>
+      <div class="field"><label>Precio $</label><input type="number" id="p-precio" style="width:130px" placeholder="0"></div>
+      <div class="field"><label>Puntos necesarios</label><input type="number" id="p-puntos" style="width:130px" placeholder="0"></div>
+      <button class="btn btn-gold" onclick="agregarPremio()">AGREGAR</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title" style="margin:0">Catálogo por categoría</div>
+      <div class="search-bar" style="margin:0">
+        <input type="text" class="search-input" placeholder="🔍  Buscar premio..." oninput="filtrarPremios(this.value)" id="inp-buscar-premio">
+        <label style="display:flex;align-items:center;gap:6px;color:var(--text-dim);font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="chk-inactivos" onchange="cargarPremios()"> Ver inactivos
+        </label>
+      </div>
+    </div>
+    <div id="premios-container"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════ CONFIG ═══════════════════ -->
+<div id="screen-config" class="screen">
+  <div class="card">
+    <div class="card-title">Configuración de puntos por acción</div>
+    <div class="config-grid" id="config-grid"></div>
+  </div>
+</div>
+
+{% endif %}
+
+<div class="toast" id="toast"></div>
+
+<script>
+let usuarioActual = null;
+let eventoActivo = null;
+let todosUsuarios = [];
+let todosPremios = [];
+
+const CAT_ICONS = {
+  'Champagne':'🍾','Bottle Service':'🥃','Importados':'✨',
+  'Bebidas':'🥤','Tragos':'🍹','Shots':'🥂','Otro':'🎁'
+};
+
+function showScreen(name, btn) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  if(btn) btn.classList.add('active');
+  const loaders = {evento:cargarEventos,usuarios:cargarUsuarios,ranking:cargarRanking,premios:cargarPremios,config:cargarConfig};
+  if(loaders[name]) loaders[name]();
+}
+
+function toast(msg, ok=true) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.borderColor = ok ? 'var(--gold)' : '#e74c3c';
+  t.style.color = ok ? 'var(--gold)' : '#e74c3c';
+  t.style.display = 'block';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.style.display='none', 2800);
+}
+
+async function api(url, method='GET', body=null) {
+  const opts = {method, headers:{'Content-Type':'application/json'}};
+  if(body) opts.body = JSON.stringify(body);
+  const r = await fetch(url, opts);
+  return r.json();
+}
+
+async function login() {
+  const pwd = document.getElementById('pwd').value;
+  const d = await api('/api/admin/login','POST',{password:pwd});
+  if(d.ok) location.reload();
+  else document.getElementById('login-err').style.display='block';
+}
+
+async function logout() {
+  await api('/api/admin/logout','POST');
+  location.reload();
+}
+
+// ── EVENTOS ──────────────────────────────────────────────────────────────────
+
+async function cargarEventos() {
+  const eventos = await api('/api/eventos');
+  eventoActivo = eventos.find(e => e.activo);
+  const banner = document.getElementById('evento-banner');
+  if(eventoActivo) {
+    banner.style.display = 'flex';
+    document.getElementById('ev-nombre-txt').textContent = eventoActivo.nombre || eventoActivo.fecha;
+    document.getElementById('ev-fecha-txt').textContent = eventoActivo.fecha;
+  } else {
+    banner.style.display = 'none';
+  }
+  document.getElementById('tbody-eventos').innerHTML = eventos.map(e => `
+    <tr>
+      <td>${e.fecha}</td>
+      <td><b>${e.nombre||'—'}</b></td>
+      <td><span class="badge ${e.activo?'badge-green':'badge-gray'}">${e.activo?'● ACTIVA':'CERRADA'}</span></td>
+      <td>${e.ganador ? '<span class="badge badge-gold">🏆 '+e.ganador+'</span>' : '<span style="color:var(--text-muted)">—</span>'}</td>
+    </tr>`).join('');
+}
+
+async function abrirEvento() {
+  const nombre = document.getElementById('inp-ev-nombre').value;
+  const fecha = document.getElementById('inp-ev-fecha').value || new Date().toISOString().split('T')[0];
+  const d = await api('/api/eventos','POST',{nombre,fecha});
+  if(d.ok) { toast('Noche abierta ✓'); cargarEventos(); }
+  else toast(d.error||'Error', false);
+}
+
+async function cerrarEvento() {
+  if(!eventoActivo || !confirm('¿Cerrar la noche? Ya no se podrán agregar registros.')) return;
+  const d = await api('/api/eventos/'+eventoActivo.id+'/cerrar','POST');
+  if(d.ok) { toast('Noche cerrada ✓'); cargarEventos(); }
+  else toast('Error', false);
+}
+
+// ── REGISTRAR ─────────────────────────────────────────────────────────────────
+
+let buscarTimeout;
+function buscarUsuario() {
+  clearTimeout(buscarTimeout);
+  buscarTimeout = setTimeout(async () => {
+    const q = document.getElementById('inp-buscar').value.trim();
+    if(q.length < 2) { document.getElementById('resultado-busqueda').style.display='none'; return; }
+    const d = await api('/api/usuarios/buscar?q=' + encodeURIComponent(q));
+    if(d.usuario) {
+      usuarioActual = d.usuario;
+      const ini = d.usuario.usuario[0].toUpperCase();
+      document.getElementById('res-avatar').textContent = ini;
+      document.getElementById('res-usuario').textContent = d.usuario.usuario + (d.usuario.nombre_display ? '  —  ' + d.usuario.nombre_display : '');
+      document.getElementById('res-pts').textContent = '★ ' + d.usuario.puntos_total.toLocaleString() + ' puntos  ·  Nivel ' + d.usuario.nivel;
+      document.getElementById('resultado-busqueda').style.display = 'block';
+    } else {
+      document.getElementById('resultado-busqueda').style.display = 'none';
+      toast('Usuario no encontrado', false);
+    }
+  }, 400);
+}
+
+async function registrarVisita() {
+  if(!usuarioActual) return toast('Buscá un usuario primero', false);
+  const consumo = parseInt(document.getElementById('inp-consumo').value)||0;
+  const tipo = document.getElementById('inp-tipo').value;
+  const d = await api('/api/visitas','POST',{usuario_id:usuarioActual.id, consumo_pesos:consumo, origen:tipo});
+  if(d.ok) {
+    toast('+' + d.puntos_sumados + ' jaggercitos sumados ✓');
+    document.getElementById('res-pts').textContent = '★ ' + d.puntos_total.toLocaleString() + ' jaggercitos  ·  Nivel ' + d.nivel;
+    document.getElementById('inp-consumo').value = '';
+  } else toast(d.error||'Error', false);
+}
+
+async function ajustarPuntos() {
+  if(!usuarioActual) return toast('Buscá un usuario primero', false);
+  const delta = parseInt(document.getElementById('inp-ajuste').value);
+  if(isNaN(delta)) return toast('Ingresá un número', false);
+  const d = await api('/api/usuarios/'+usuarioActual.id+'/puntos','POST',{delta});
+  if(d.ok) {
+    toast('Jaggercitos ajustados ✓');
+    document.getElementById('res-pts').textContent = '★ ' + d.puntos_total.toLocaleString() + ' jaggercitos  ·  Nivel ' + d.nivel;
+    document.getElementById('inp-ajuste').value = '';
+  } else toast('Error', false);
+}
+
+// ── USUARIOS ─────────────────────────────────────────────────────────────────
+
+async function cargarUsuarios() {
+  todosUsuarios = await api('/api/usuarios');
+  renderUsuarios(todosUsuarios);
+  const totalPts = todosUsuarios.reduce((a,u)=>a+u.puntos_total,0);
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat"><div class="stat-num">${todosUsuarios.length}</div><div class="stat-label">Total usuarios</div></div>
+    <div class="stat"><div class="stat-num">${todosUsuarios.filter(u=>u.nivel>=2).length}</div><div class="stat-label">Nivel 2+</div></div>
+    <div class="stat"><div class="stat-num">${todosUsuarios.filter(u=>u.nivel>=3).length}</div><div class="stat-label">Nivel 3+</div></div>
+    <div class="stat"><div class="stat-num">${todosUsuarios.filter(u=>u.nivel>=4).length}</div><div class="stat-label">Nivel 4 (VIP)</div></div>
+    <div class="stat"><div class="stat-num">${totalPts.toLocaleString()}</div><div class="stat-label">Puntos totales</div></div>`;
+}
+
+function renderUsuarios(lista) {
+  const nivelLabels = ['','BÁSICO','PLATA','ORO','VIP'];
+  const nivelColors = ['','badge-gray','badge-blue','badge-gold','badge-green'];
+  document.getElementById('tbody-usuarios').innerHTML = lista.map((u,i) => `
+    <tr>
+      <td style="color:var(--text-muted)">${i+1}</td>
+      <td><b style="color:var(--gold)">${u.usuario}</b></td>
+      <td>${u.nombre_display||'<span style="color:var(--text-muted)">—</span>'}</td>
+      <td style="font-family:monospace;font-size:13px">${u.dni}</td>
+      <td><span class="badge badge-gold">★ ${u.puntos_total.toLocaleString()}</span></td>
+      <td><span class="badge ${nivelColors[u.nivel]||'badge-gray'}">${nivelLabels[u.nivel]||u.nivel}</span></td>
+    </tr>`).join('');
+}
+
+function filtrarUsuarios(q) {
+  renderUsuarios(todosUsuarios.filter(u =>
+    u.usuario.toLowerCase().includes(q.toLowerCase()) ||
+    (u.nombre_display||'').toLowerCase().includes(q.toLowerCase()) ||
+    u.dni.includes(q)));
+}
+
+// ── RANKING ───────────────────────────────────────────────────────────────────
+
+async function cargarRanking() {
+  const data = await api('/api/ranking/noche');
+  const podio = document.getElementById('ranking-podio');
+  const tbody = document.getElementById('tbody-ranking');
+
+  if(!data.length) {
+    podio.innerHTML = '';
+    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--text-muted);text-align:center;padding:28px">Sin evento activo o sin registros aún</td></tr>';
+    return;
+  }
+
+  // Podio top 3
+  const top3 = data.slice(0,3);
+  const posLabels = ['🥇','🥈','🥉'];
+  podio.innerHTML = top3.map((r,i) => `
+    <div class="ranking-podio pos-${i+1}">
+      <div class="podio-pos pos-${i+1}">${posLabels[i]}</div>
+      <div class="podio-user">${r.usuario}</div>
+      <div class="podio-consumo">$${r.consumo_pesos?.toLocaleString()}</div>
+      ${r.gano_botella ? '<div style="margin-top:6px"><span class="badge badge-gold">GANADOR</span></div>' : ''}
+    </div>`).join('');
+  // Completar podio vacío
+  for(let i=top3.length;i<3;i++) {
+    podio.innerHTML += `<div class="ranking-podio pos-${i+1}"><div class="podio-pos pos-${i+1}">${posLabels[i]}</div><div class="podio-user" style="color:var(--text-muted)">—</div></div>`;
+  }
+
+  tbody.innerHTML = data.map((r,i) => `
+    <tr>
+      <td><b style="font-size:16px">${i+1}</b></td>
+      <td><b>${r.usuario}</b></td>
+      <td><b>$${r.consumo_pesos?.toLocaleString()}</b></td>
+      <td>${r.puntos_bonus ? '<span class="badge badge-gold">+'+r.puntos_bonus+'</span>' : '<span style="color:var(--text-muted)">—</span>'}</td>
+      <td>${r.gano_botella ? '<span class="badge badge-gold">🏆 GANADOR</span>' : '—'}</td>
+    </tr>`).join('');
+}
+
+async function declararGanador() {
+  const d = await api('/api/ranking/declarar-ganador','POST');
+  if(d.ok) { toast('🏆 Ganador: ' + d.ganador + ' ✓'); cargarRanking(); }
+  else toast(d.error||'Sin evento activo', false);
+}
+
+// ── PREMIOS ───────────────────────────────────────────────────────────────────
+
+async function cargarPremios() {
+  todosPremios = await api('/api/premios');
+  renderPremios(todosPremios);
+}
+
+function renderPremios(lista) {
+  const mostrarInactivos = document.getElementById('chk-inactivos')?.checked;
+  const filtrados = mostrarInactivos ? lista : lista.filter(p => p.activo);
+  const categorias = [...new Set(filtrados.map(p => p.categoria||'Otro'))];
+  const container = document.getElementById('premios-container');
+  if(!filtrados.length) {
+    container.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:32px">No hay premios</div>';
+    return;
+  }
+  container.innerHTML = categorias.map(cat => {
+    const items = filtrados.filter(p => (p.categoria||'Otro') === cat);
+    const icon = CAT_ICONS[cat] || '🎁';
+    return `
+      <div class="cat-section">
+        <div class="cat-header">
+          <div class="cat-icon" style="background:var(--surface3)">${icon}</div>
+          <div class="cat-name">${cat}</div>
+          <div class="cat-count">${items.length} productos</div>
+        </div>
+        <div class="premio-grid">
+          ${items.map(p => `
+            <div class="premio-card ${p.activo?'':'inactivo'}">
+              <div style="min-width:0;flex:1">
+                <div class="premio-nombre">${p.nombre}</div>
+                <div class="premio-precio">$${p.precio_pesos?.toLocaleString()}</div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0">
+                <div style="color:var(--gold-dim);font-size:10px;letter-spacing:1.5px;text-transform:uppercase">JAGGERCITOS</div>
+                <input type="number" class="premio-pts-input" value="${p.puntos_necesarios}" onchange="actualizarPremio(${p.id},this.value)" style="background:var(--gold-bg);border-color:var(--gold-dim);color:var(--gold);font-family:'Oswald',sans-serif;font-size:16px;font-weight:600;text-align:center;">
+              </div>
+              <div class="premio-actions">
+                <button class="btn btn-outline btn-sm" onclick="togglePremio(${p.id},${p.activo?1:0})" title="${p.activo?'Desactivar':'Activar'}">
+                  ${p.activo?'✕':'✓'}
+                </button>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function filtrarPremios(q) {
+  const filtrados = todosPremios.filter(p =>
+    p.nombre.toLowerCase().includes(q.toLowerCase()) ||
+    (p.categoria||'').toLowerCase().includes(q.toLowerCase()));
+  renderPremios(filtrados);
+}
+
+async function agregarPremio() {
+  const body = {
+    nombre: document.getElementById('p-nombre').value.trim(),
+    categoria: document.getElementById('p-cat').value,
+    precio_pesos: parseInt(document.getElementById('p-precio').value)||0,
+    puntos_necesarios: parseInt(document.getElementById('p-puntos').value)||0,
+  };
+  if(!body.nombre || !body.puntos_necesarios) return toast('Completá nombre y puntos', false);
+  const d = await api('/api/premios','POST',body);
+  if(d.ok) {
+    toast('Premio agregado ✓');
+    cargarPremios();
+    ['p-nombre','p-precio','p-puntos'].forEach(id=>document.getElementById(id).value='');
+  } else toast('Error', false);
+}
+
+async function actualizarPremio(id, puntos) {
+  await api('/api/premios/'+id,'PUT',{puntos_necesarios:parseInt(puntos)});
+  toast('Jaggercitos actualizados ✓');
+}
+
+async function togglePremio(id, activo) {
+  await api('/api/premios/'+id,'PUT',{activo:!activo});
+  cargarPremios();
+}
+
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+
+async function cargarConfig() {
+  const config = await api('/api/config');
+  document.getElementById('config-grid').innerHTML = config.map(c => `
+    <div class="config-item">
+      <div class="config-desc">${c.descripcion}</div>
+      <div class="config-right">
+        <input type="number" value="${c.valor}" style="width:90px;text-align:center" id="cfg-${c.clave}">
+        <button class="btn btn-outline btn-sm" onclick="guardarConfig('${c.clave}')">✓</button>
+      </div>
+    </div>`).join('');
+}
+
+async function guardarConfig(clave) {
+  const valor = parseInt(document.getElementById('cfg-'+clave).value);
+  const d = await api('/api/config/'+clave,'PUT',{valor});
+  if(d.ok) toast('Guardado ✓');
+}
+
+// Init
+document.getElementById('inp-ev-fecha') && (document.getElementById('inp-ev-fecha').value = new Date().toISOString().split('T')[0]);
+cargarEventos();
+</script>
+</body>
+</html>
