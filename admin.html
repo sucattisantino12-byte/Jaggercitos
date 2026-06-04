@@ -391,10 +391,15 @@ async function api(url, method='GET', body=null) {
 }
 
 async function login() {
-  const pwd = document.getElementById('pwd').value;
-  const d = await api('/api/admin/login','POST',{password:pwd});
+  const email = document.getElementById('login-email').value.trim();
+  const pwd = document.getElementById('login-pwd').value;
+  if(!email || !pwd) { document.getElementById('login-err').style.display='block'; return; }
+  const d = await api('/api/admin/login','POST',{email, password:pwd});
   if(d.ok) location.reload();
-  else document.getElementById('login-err').style.display='block';
+  else {
+    document.getElementById('login-err').style.display='block';
+    document.getElementById('login-err').textContent = '⚠ ' + (d.error || 'Email o contraseña incorrectos');
+  }
 }
 
 async function logout() {
@@ -405,7 +410,7 @@ async function logout() {
 // ── EVENTOS ──────────────────────────────────────────────────────────────────
 
 async function cargarEventos() {
-  const eventos = await api('/api/eventos');
+  const eventos = await api('/api/admin/eventos');
   eventoActivo = eventos.find(e => e.activo);
   const banner = document.getElementById('evento-banner');
   if(eventoActivo) {
@@ -427,7 +432,7 @@ async function cargarEventos() {
 async function abrirEvento() {
   const nombre = document.getElementById('inp-ev-nombre').value;
   const fecha = document.getElementById('inp-ev-fecha').value || new Date().toISOString().split('T')[0];
-  const d = await api('/api/eventos','POST',{nombre,fecha});
+  const d = await api('/api/admin/eventos','POST',{nombre,fecha});
   if(d.ok) { toast('Noche abierta ✓'); cargarEventos(); }
   else toast(d.error||'Error', false);
 }
@@ -447,7 +452,7 @@ function buscarUsuario() {
   buscarTimeout = setTimeout(async () => {
     const q = document.getElementById('inp-buscar').value.trim();
     if(q.length < 2) { document.getElementById('resultado-busqueda').style.display='none'; return; }
-    const d = await api('/api/usuarios/buscar?q=' + encodeURIComponent(q));
+    const d = await api('/api/admin/usuarios/buscar?q=' + encodeURIComponent(q));
     if(d.usuario) {
       usuarioActual = d.usuario;
       const ini = d.usuario.usuario[0].toUpperCase();
@@ -466,7 +471,7 @@ async function registrarVisita() {
   if(!usuarioActual) return toast('Buscá un usuario primero', false);
   const consumo = parseInt(document.getElementById('inp-consumo').value)||0;
   const tipo = document.getElementById('inp-tipo').value;
-  const d = await api('/api/visitas','POST',{usuario_id:usuarioActual.id, consumo_pesos:consumo, origen:tipo});
+  const d = await api('/api/admin/visitas','POST',{bu_id:usuarioActual.bu_id||usuarioActual.id, consumo_pesos:consumo, origen:tipo});
   if(d.ok) {
     toast('+' + d.puntos_sumados + ' jaggercitos sumados ✓');
     document.getElementById('res-pts').textContent = '★ ' + d.puntos_total.toLocaleString() + ' jaggercitos  ·  Nivel ' + d.nivel;
@@ -478,7 +483,7 @@ async function ajustarPuntos() {
   if(!usuarioActual) return toast('Buscá un usuario primero', false);
   const delta = parseInt(document.getElementById('inp-ajuste').value);
   if(isNaN(delta)) return toast('Ingresá un número', false);
-  const d = await api('/api/usuarios/'+usuarioActual.id+'/puntos','POST',{delta});
+  const d = await api('/api/admin/usuarios/'+usuarioActual.id+'/puntos','POST',{delta});
   if(d.ok) {
     toast('Jaggercitos ajustados ✓');
     document.getElementById('res-pts').textContent = '★ ' + d.puntos_total.toLocaleString() + ' jaggercitos  ·  Nivel ' + d.nivel;
@@ -489,7 +494,7 @@ async function ajustarPuntos() {
 // ── USUARIOS ─────────────────────────────────────────────────────────────────
 
 async function cargarUsuarios() {
-  todosUsuarios = await api('/api/usuarios');
+  todosUsuarios = await api('/api/admin/usuarios');
   renderUsuarios(todosUsuarios);
   const totalPts = todosUsuarios.reduce((a,u)=>a+u.puntos_total,0);
   document.getElementById('stats-grid').innerHTML = `
@@ -524,7 +529,7 @@ function filtrarUsuarios(q) {
 // ── RANKING ───────────────────────────────────────────────────────────────────
 
 async function cargarRanking() {
-  const data = await api('/api/ranking/noche');
+  const data = await api('/api/ranking/noche?boliche=club-jagger');
   const podio = document.getElementById('ranking-podio');
   const tbody = document.getElementById('tbody-ranking');
 
@@ -560,7 +565,7 @@ async function cargarRanking() {
 }
 
 async function declararGanador() {
-  const d = await api('/api/ranking/declarar-ganador','POST');
+  const d = await api('/api/admin/ranking/declarar-ganador','POST');
   if(d.ok) { toast('🏆 Ganador: ' + d.ganador + ' ✓'); cargarRanking(); }
   else toast(d.error||'Sin evento activo', false);
 }
@@ -568,7 +573,7 @@ async function declararGanador() {
 // ── PREMIOS ───────────────────────────────────────────────────────────────────
 
 async function cargarPremios() {
-  todosPremios = await api('/api/premios');
+  todosPremios = await api('/api/admin/premios');
   renderPremios(todosPremios);
 }
 
@@ -628,7 +633,7 @@ async function agregarPremio() {
     puntos_necesarios: parseInt(document.getElementById('p-puntos').value)||0,
   };
   if(!body.nombre || !body.puntos_necesarios) return toast('Completá nombre y puntos', false);
-  const d = await api('/api/premios','POST',body);
+  const d = await api('/api/admin/premios','POST',body);
   if(d.ok) {
     toast('Premio agregado ✓');
     cargarPremios();
@@ -637,19 +642,19 @@ async function agregarPremio() {
 }
 
 async function actualizarPremio(id, puntos) {
-  await api('/api/premios/'+id,'PUT',{puntos_necesarios:parseInt(puntos)});
+  await api('/api/admin/premios/'+id,'PUT',{puntos_necesarios:parseInt(puntos)});
   toast('Jaggercitos actualizados ✓');
 }
 
 async function togglePremio(id, activo) {
-  await api('/api/premios/'+id,'PUT',{activo:!activo});
+  await api('/api/admin/premios/'+id,'PUT',{activo:!activo});
   cargarPremios();
 }
 
 // ── CONFIG ────────────────────────────────────────────────────────────────────
 
 async function cargarConfig() {
-  const config = await api('/api/config');
+  const config = await api('/api/admin/config');
   document.getElementById('config-grid').innerHTML = config.map(c => `
     <div class="config-item">
       <div class="config-desc">${c.descripcion}</div>
@@ -662,7 +667,7 @@ async function cargarConfig() {
 
 async function guardarConfig(clave) {
   const valor = parseInt(document.getElementById('cfg-'+clave).value);
-  const d = await api('/api/config/'+clave,'PUT',{valor});
+  const d = await api('/api/admin/config/'+clave,'PUT',{valor});
   if(d.ok) toast('Guardado ✓');
 }
 
