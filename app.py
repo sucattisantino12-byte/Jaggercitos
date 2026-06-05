@@ -439,16 +439,30 @@ def ranking_noche():
 @app.route('/api/ranking/historico')
 def ranking_historico():
     slug = request.args.get('boliche','').strip()
+    periodo = request.args.get('periodo','historico').strip()
     db = get_db()
     b = q1(db, 'SELECT id FROM boliches WHERE slug=:s', {'s': slug})
     if not b: return jsonify([])
-    rows = q(db, '''SELECT COALESCE(bu.nombre_display,u.usuario) as nombre,
+    from datetime import date, timedelta
+    hoy = date.today()
+    filtro_fecha = ''
+    if periodo == 'mensual':
+        desde = hoy.replace(day=1).isoformat()
+        filtro_fecha = f"AND e.fecha >= '{desde}'"
+    elif periodo == 'trimestral':
+        mes = ((hoy.month - 1) // 3) * 3 + 1
+        desde = hoy.replace(month=mes, day=1).isoformat()
+        filtro_fecha = f"AND e.fecha >= '{desde}'"
+    elif periodo == 'anual':
+        desde = hoy.replace(month=1, day=1).isoformat()
+        filtro_fecha = f"AND e.fecha >= '{desde}'"
+    rows = q(db, f'''SELECT COALESCE(bu.nombre_display,u.usuario) as nombre,
                            SUM(rn.consumo_pesos) as total_consumo, COUNT(rn.id) as noches
                     FROM ranking_noche rn
                     JOIN boliche_usuarios bu ON bu.id=rn.boliche_usuario_id
                     JOIN usuarios u ON u.id=bu.usuario_id
                     JOIN eventos e ON e.id=rn.evento_id
-                    WHERE e.boliche_id=:bid
+                    WHERE e.boliche_id=:bid {filtro_fecha}
                     GROUP BY bu.id,bu.nombre_display,u.usuario
                     ORDER BY total_consumo DESC LIMIT 50''', {'bid': str(b['id'])})
     return jsonify([dict(r) for r in rows])
@@ -642,7 +656,13 @@ def external_registrar():
             {'uid': str(u['id']),'bid': str(b['id'])})
     if not bu: return jsonify({'ok': False,'error': 'Usuario no está en este boliche'})
     ev = q1(db, 'SELECT id FROM eventos WHERE boliche_id=:bid AND activo=TRUE LIMIT 1', {'bid': str(b['id'])})
-    if not ev: return jsonify({'ok': False,'error': 'No hay evento activo'})
+    if not ev:
+        from datetime import date
+        fecha_hoy = date.today().isoformat()
+        q(db, 'INSERT INTO eventos (boliche_id,fecha,nombre,activo) VALUES (:bid,:f,:n,TRUE)',
+          {'bid': str(b['id']), 'f': fecha_hoy, 'n': 'Noche '+fecha_hoy})
+        ev = q1(db, 'SELECT id FROM eventos WHERE boliche_id=:bid AND activo=TRUE LIMIT 1', {'bid': str(b['id'])})
+        db.commit()
     c = cfg(str(b['id']))
     pc = (consumo // 1000) * c.get('pts_por_mil', 1)
     pm = c.get('pts_mesa',30) if origen=='mesa' else 0
