@@ -145,27 +145,29 @@ tbody tr:first-child td{border-top:none;}
 </head>
 <body>
 
-{% if not session.get('admin') %}
+<div id="login-page">
 <div class="login-wrap">
   <div class="login-box">
-    <div class="login-logo">JAGGERCITOS</div>
+    <div class="login-logo">CLUBPASS</div>
     <div class="login-sub">Panel de Administración</div>
     <div class="field" style="text-align:left;margin-bottom:14px;">
+      <label>Email</label>
+      <input type="email" id="login-email" style="width:100%" placeholder="tu@email.com" onkeydown="if(event.key==='Enter')login()">
+    </div>
+    <div class="field" style="text-align:left;margin-bottom:14px;">
       <label>Contraseña</label>
-      <input type="password" id="pwd" style="width:100%" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
+      <input type="password" id="login-pwd" style="width:100%" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
     </div>
     <button class="btn btn-gold" style="width:100%;padding:13px;font-size:14px;margin-bottom:16px" onclick="login()">INGRESAR</button>
-    <div class="login-divider"></div>
-    <div style="color:var(--text-muted);font-size:12px">Demo: <b style="color:var(--text-dim)">jagger2024</b> &nbsp;<span class="demo-badge">LOCAL</span></div>
-    <div id="login-err" style="color:#e74c3c;font-size:13px;margin-top:12px;display:none;">⚠ Contraseña incorrecta</div>
+    <div id="login-err" style="color:#e74c3c;font-size:13px;margin-top:12px;display:none;">⚠ Email o contraseña incorrectos</div>
   </div>
 </div>
-{% else %}
+</div>
+<div id="admin-page" style="display:none">
 
 <div class="header">
   <div style="display:flex;align-items:center;gap:14px">
-    <div class="logo">JAGGERCITOS <span>ADMIN</span></div>
-    <span class="demo-badge">DEMO LOCAL</span>
+    <div class="logo">CLUBPASS <span>ADMIN</span></div>
   </div>
   <div class="nav">
     <button class="nav-btn active" onclick="showScreen('evento',this)">🌙 Evento</button>
@@ -349,7 +351,7 @@ tbody tr:first-child td{border-top:none;}
   </div>
 </div>
 
-{% endif %}
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -393,10 +395,17 @@ async function api(url, method='GET', body=null) {
 async function login() {
   const email = document.getElementById('login-email').value.trim();
   const pwd = document.getElementById('login-pwd').value;
-  if(!email || !pwd) { document.getElementById('login-err').style.display='block'; return; }
+  if(!email || !pwd) {
+    document.getElementById('login-err').style.display='block';
+    document.getElementById('login-err').textContent = '⚠ Completá email y contraseña';
+    return;
+  }
   const d = await api('/api/admin/login','POST',{email, password:pwd});
-  if(d.ok) location.reload();
-  else {
+  if(d.ok) {
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('admin-page').style.display = 'block';
+    cargarEventos();
+  } else {
     document.getElementById('login-err').style.display='block';
     document.getElementById('login-err').textContent = '⚠ ' + (d.error || 'Email o contraseña incorrectos');
   }
@@ -404,7 +413,8 @@ async function login() {
 
 async function logout() {
   await api('/api/admin/logout','POST');
-  location.reload();
+  document.getElementById('admin-page').style.display = 'none';
+  document.getElementById('login-page').style.display = 'flex';
 }
 
 // ── EVENTOS ──────────────────────────────────────────────────────────────────
@@ -439,7 +449,7 @@ async function abrirEvento() {
 
 async function cerrarEvento() {
   if(!eventoActivo || !confirm('¿Cerrar la noche? Ya no se podrán agregar registros.')) return;
-  const d = await api('/api/eventos/'+eventoActivo.id+'/cerrar','POST');
+  const d = await api('/api/admin/eventos/'+eventoActivo.id+'/cerrar','POST');
   if(d.ok) { toast('Noche cerrada ✓'); cargarEventos(); }
   else toast('Error', false);
 }
@@ -672,8 +682,19 @@ async function guardarConfig(clave) {
 }
 
 // Init
-document.getElementById('inp-ev-fecha') && (document.getElementById('inp-ev-fecha').value = new Date().toISOString().split('T')[0]);
-cargarEventos();
+async function checkSession() {
+  const d = await api('/api/admin/me');
+  if(d.ok) {
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('admin-page').style.display = 'block';
+    document.getElementById('inp-ev-fecha') && (document.getElementById('inp-ev-fecha').value = new Date().toISOString().split('T')[0]);
+    cargarEventos();
+  } else {
+    document.getElementById('login-page').style.display = 'flex';
+    document.getElementById('admin-page').style.display = 'none';
+  }
+}
+checkSession();
 </script>
 </body>
 </html>
