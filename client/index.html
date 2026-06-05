@@ -239,8 +239,9 @@ body{font-family:'DM Sans',sans-serif;color:var(--text);overscroll-behavior:none
       </div>
       <div class="auth-field"><label>Género</label>
         <div class="gender-row">
-          <button class="gender-btn active" id="gen-m" onclick="selectGender('M')">Sr.</button>
-          <button class="gender-btn" id="gen-f" onclick="selectGender('F')">Sra.</button>
+          <button class="gender-btn active" id="gen-m" onclick="selectGender('M')">Hombre</button>
+          <button class="gender-btn" id="gen-f" onclick="selectGender('F')">Mujer</button>
+          <button class="gender-btn" id="gen-x" onclick="selectGender('X')">No especificar</button>
         </div>
       </div>
       <div class="auth-field"><label>DNI</label>
@@ -251,6 +252,9 @@ body{font-family:'DM Sans',sans-serif;color:var(--text);overscroll-behavior:none
       </div>
       <div class="auth-field"><label>Contraseña</label>
         <input class="auth-input" type="password" id="reg-pass" placeholder="Mínimo 6 caracteres">
+      </div>
+      <div class="auth-field"><label>Confirmar contraseña</label>
+        <input class="auth-input" type="password" id="reg-pass2" placeholder="Repetí la contraseña" onkeydown="if(event.key==='Enter')doRegistro()">
       </div>
       <button class="auth-btn" onclick="doRegistro()">CREAR CUENTA</button>
       <div class="auth-err" id="reg-err"></div>
@@ -490,6 +494,7 @@ function selectGender(g) {
   generoSeleccionado = g;
   document.getElementById('gen-m').classList.toggle('active', g==='M');
   document.getElementById('gen-f').classList.toggle('active', g==='F');
+  document.getElementById('gen-x').classList.toggle('active', g==='X');
 }
 
 async function doLogin() {
@@ -520,6 +525,8 @@ async function doRegistro() {
   err.style.display='none';
   if(!usuario||!nombre||!dni||!email||!pass){err.textContent='Completá todos los campos';err.style.display='block';return;}
   if(pass.length<6){err.textContent='La contraseña debe tener al menos 6 caracteres';err.style.display='block';return;}
+  const pass2=document.getElementById('reg-pass2').value;
+  if(pass!==pass2){err.textContent='Las contraseñas no coinciden';err.style.display='block';return;}
   const d=await api('/api/auth/registro','POST',{usuario,nombre,genero:generoSeleccionado,dni,email,password:pass});
   if(d.ok) {
     document.getElementById('reg-ok').style.display='block';
@@ -534,9 +541,10 @@ async function doRegistro() {
 async function loadHome() {
   if(!currentUser) return;
   const genero = currentUser.genero||'M';
-  const tratamiento = genero==='F'?'Bienvenida, Sra.':'Bienvenido, Sr.';
+  const tratamiento = genero==='F'?'Bienvenida':'Bienvenido/a';
+  const nombre_display = currentUser.nombre||currentUser.usuario;
   document.getElementById('home-greeting').textContent = tratamiento;
-  document.getElementById('home-name').innerHTML = currentUser.nombre||currentUser.usuario;
+  document.getElementById('home-name').innerHTML = nombre_display;
 
   const boliches = await api('/api/boliches');
   const lista = document.getElementById('boliches-lista');
