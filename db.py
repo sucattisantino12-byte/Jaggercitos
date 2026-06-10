@@ -1,4 +1,4 @@
-import pg8000.native
+import pg8000.dbapi
 import os
 from urllib.parse import urlparse
 from flask import g
@@ -19,7 +19,10 @@ def parse_url():
 
 def get_db():
     if 'db' not in g:
-        g.db = pg8000.native.Connection(**parse_url())
+        params = parse_url()
+        conn = pg8000.dbapi.connect(**params)
+        conn.autocommit = False
+        g.db = conn
     return g.db
 
 def close_db(e=None):
@@ -31,10 +34,26 @@ def close_db(e=None):
             pass
 
 def q(conn, sql, params=None):
+    """Execute query and return list of dicts."""
     try:
-        rows = conn.run(sql, **params) if params else conn.run(sql)
-        cols = [c['name'] for c in (conn.columns or [])]
-        return [dict(zip(cols, row)) for row in (rows or [])]
+        cur = conn.cursor()
+        if params:
+            # Convert :name style to %s style for pg8000.dbapi
+            import re
+            keys = []
+            def replace_param(m):
+                keys.append(m.group(1))
+                return '%s'
+            sql2 = re.sub(r':([a-zA-Z_][a-zA-Z0-9_]*)', replace_param, sql)
+            values = [params[k] for k in keys]
+            cur.execute(sql2, values)
+        else:
+            cur.execute(sql)
+        if cur.description:
+            cols = [d[0] for d in cur.description]
+            rows = cur.fetchall()
+            return [dict(zip(cols, row)) for row in rows]
+        return []
     except Exception as e:
         try:
             conn.rollback()
@@ -48,7 +67,10 @@ def q1(conn, sql, params=None):
 
 def init_db():
     print('[db] Conectando...')
-    conn = pg8000.native.Connection(**parse_url())
-    result = conn.run("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public'")
-    print(f'[db] {result[0][0]} tablas encontradas OK')
+    params = parse_url()
+    conn = pg8000.dbapi.connect(**params)
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public'")
+    count = cur.fetchone()[0]
     conn.close()
+    print(f'[db] {count} tablas encontradas OK')
