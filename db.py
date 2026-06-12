@@ -72,5 +72,15 @@ def init_db():
     cur = conn.cursor()
     cur.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public'")
     count = cur.fetchone()[0]
+    # Auto-unir usuarios existentes a boliches activos (idempotente)
+    try:
+        cur.execute("""INSERT INTO boliche_usuarios (boliche_id, usuario_id)
+            SELECT b.id, u.id FROM boliches b, usuarios u
+            WHERE b.activo = TRUE ON CONFLICT DO NOTHING""")
+        conn.commit()
+        print('[db] Usuarios sincronizados con boliches OK')
+    except Exception as e:
+        print(f'[db] Sync warning: {e}')
+        conn.rollback()
     conn.close()
     print(f'[db] {count} tablas encontradas OK')
