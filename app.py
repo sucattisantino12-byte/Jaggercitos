@@ -160,6 +160,13 @@ def registro():
     genero = body.get('genero','M').strip()
     q(db, 'INSERT INTO usuarios (email,password_hash,usuario,dni,nombre,genero) VALUES (:e,:p,:u,:d,:n,:g)',
       {'e': email, 'p': hp(password), 'u': usuario, 'd': dni, 'n': nombre, 'g': genero})
+    # Auto-unir a todos los boliches activos
+    nuevo = q1(db, 'SELECT id FROM usuarios WHERE usuario=:u', {'u': usuario})
+    if nuevo:
+        boliches = q(db, 'SELECT id FROM boliches WHERE activo=TRUE')
+        for b in boliches:
+            q(db, 'INSERT INTO boliche_usuarios (boliche_id,usuario_id) VALUES (:bid,:uid) ON CONFLICT DO NOTHING',
+              {'bid': str(b['id']), 'uid': str(nuevo['id'])})
     db.commit()
     return jsonify({'ok': True})
 
@@ -169,7 +176,7 @@ def auth_login():
     u = body.get('usuario','').strip()
     p = body.get('password','').strip()
     db = get_db()
-    row = q1(db, 'SELECT id,usuario,dni,avatar,nombre,genero FROM usuarios WHERE (usuario=:u OR email=:e) AND password_hash=:p',
+    row = q1(db, 'SELECT id,usuario,dni,avatar,nombre,genero,nombre_pantalla,email FROM usuarios WHERE (usuario=:u OR email=:e) AND password_hash=:p',
              {'u': u, 'e': u.lower(), 'p': hp(p)})
     if not row: return jsonify({'ok': False, 'error': 'Usuario o contraseña incorrectos'}), 401
     uid = str(row['id'])
@@ -183,7 +190,7 @@ def auth_login():
 def auth_me():
     u = request.args.get('usuario','').strip()
     db = get_db()
-    row = q1(db, 'SELECT id,usuario,dni,avatar,nombre,genero FROM usuarios WHERE usuario=:u', {'u': u})
+    row = q1(db, 'SELECT id,usuario,dni,avatar,nombre,genero,nombre_pantalla,email FROM usuarios WHERE usuario=:u', {'u': u})
     if not row: return jsonify({'ok': False})
     uid = str(row['id'])
     boliches = q(db, '''SELECT b.id,b.nombre,b.slug,b.color_primario,b.color_secundario,b.logo_url,
@@ -236,6 +243,52 @@ def avatar():
     if not q1(db, 'SELECT id FROM usuarios WHERE usuario=:u', {'u': u}):
         return jsonify({'ok': False, 'error': 'Usuario no encontrado'})
     q(db, 'UPDATE usuarios SET avatar=:a WHERE usuario=:u', {'a': av, 'u': u})
+    db.commit()
+    return jsonify({'ok': True})
+
+@app.route('/api/usuario/nombre-pantalla', methods=['POST'])
+def nombre_pantalla():
+    body = request.get_json() or {}
+    u = (body.get('usuario') or '').strip()
+    np = (body.get('nombre_pantalla') or '').strip()
+    db = get_db()
+    if not q1(db, 'SELECT id FROM usuarios WHERE usuario=:u', {'u': u}):
+        return jsonify({'ok': False, 'error': 'Usuario no encontrado'})
+    q(db, 'UPDATE usuarios SET nombre_pantalla=:n WHERE usuario=:u', {'n': np, 'u': u})
+    db.commit()
+    return jsonify({'ok': True})
+
+@app.route('/api/usuario/password', methods=['POST'])
+def cambiar_password():
+    body = request.get_json() or {}
+    u = (body.get('usuario') or '').strip()
+    actual = body.get('actual') or ''
+    nueva = body.get('nueva') or ''
+    if len(nueva) < 6:
+        return jsonify({'ok': False, 'error': 'La contraseña debe tener al menos 6 caracteres'})
+    db = get_db()
+    row = q1(db, 'SELECT id FROM usuarios WHERE usuario=:u AND password_hash=:p', {'u': u, 'p': hp(actual)})
+    if not row:
+        return jsonify({'ok': False, 'error': 'La contraseña actual es incorrecta'})
+    q(db, 'UPDATE usuarios SET password_hash=:p WHERE usuario=:u', {'p': hp(nueva), 'u': u})
+    db.commit()
+    return jsonify({'ok': True})
+
+@app.route('/api/usuario/email', methods=['POST'])
+def cambiar_email():
+    body = request.get_json() or {}
+    u = (body.get('usuario') or '').strip()
+    password = body.get('password') or ''
+    nuevo = (body.get('email') or '').strip().lower()
+    if not nuevo:
+        return jsonify({'ok': False, 'error': 'Ingresá el nuevo email'})
+    db = get_db()
+    row = q1(db, 'SELECT id FROM usuarios WHERE usuario=:u AND password_hash=:p', {'u': u, 'p': hp(password)})
+    if not row:
+        return jsonify({'ok': False, 'error': 'Contraseña incorrecta'})
+    if q1(db, 'SELECT id FROM usuarios WHERE email=:e AND usuario!=:u', {'e': nuevo, 'u': u}):
+        return jsonify({'ok': False, 'error': 'Ese email ya está en uso'})
+    q(db, 'UPDATE usuarios SET email=:e WHERE usuario=:u', {'e': nuevo, 'u': u})
     db.commit()
     return jsonify({'ok': True})
 
