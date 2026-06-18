@@ -177,6 +177,7 @@ tbody tr:hover td{background:var(--surface2)}
     <button class="tab" data-s="usuarios" onclick="tab('usuarios',this)"><svg class="ic ic-sm"><use href="#i-users"/></svg>Usuarios</button>
     <button class="tab" data-s="ranking" onclick="tab('ranking',this)"><svg class="ic ic-sm"><use href="#i-trophy"/></svg>Ranking</button>
     <button class="tab" data-s="premios" onclick="tab('premios',this)"><svg class="ic ic-sm"><use href="#i-gift"/></svg>Premios</button>
+    <button class="tab" data-s="canjes" onclick="tab('canjes',this)"><svg class="ic ic-sm"><use href="#i-gift"/></svg>Canjes<span id="adm-canjes-badge" style="display:none;margin-left:6px;min-width:18px;height:18px;background:var(--err);color:#fff;border-radius:9px;font-size:11px;font-weight:700;line-height:18px;text-align:center;padding:0 4px;">0</span></button>
     <button class="tab" data-s="config" onclick="tab('config',this)"><svg class="ic ic-sm"><use href="#i-cog"/></svg>Ajustes</button>
   </div>
   <div class="wrap">
@@ -297,6 +298,24 @@ tbody tr:hover td{background:var(--surface2)}
       </div>
     </div>
 
+    <!-- CANJES -->
+    <div class="scr" id="s-canjes">
+      <div class="panel">
+        <div class="panel-h">
+          <span class="panel-t">Canjes pendientes de entregar</span>
+          <button class="btn btn-sm" onclick="loadCanjes()">Actualizar</button>
+        </div>
+        <div class="panel-b">
+          <div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.5">Premios que los clientes canjearon desde la app y todavía no retiraron. Los puntos ya fueron descontados al momento del canje. Tocá entregar cuando el cliente retire el premio.</div>
+          <div id="adm-canjes-list"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><span class="panel-t">Ya entregados (hoy)</span></div>
+        <div class="panel-b"><div id="adm-canjes-usados"></div></div>
+      </div>
+    </div>
+
     <!-- CONFIG -->
     <div class="scr" id="s-config">
       <div class="panel">
@@ -345,7 +364,7 @@ function tab(s,btn){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));btn.classList.add('on');
   document.querySelectorAll('.scr').forEach(x=>x.classList.remove('on'));
   document.getElementById('s-'+s).classList.add('on');
-  ({noche:loadNoche,usuarios:loadUsers,ranking:loadRank,premios:loadPremios,config:loadCfg}[s])();
+  ({noche:loadNoche,usuarios:loadUsers,ranking:loadRank,premios:loadPremios,canjes:loadCanjes,config:loadCfg}[s])();
 }
 
 /* NOCHE */
@@ -479,6 +498,34 @@ async function loadCfg(){
     <div class="cfg"><div class="d">${c.descripcion}</div><div class="r"><input type="number" value="${c.valor}" id="cfg-${c.clave}"><button class="iconbtn" onclick="saveCfg('${c.clave}')"><svg class="ic ic-sm"><use href="#i-check"/></svg></button></div></div>`).join('');
 }
 async function saveCfg(k){const v=parseInt(document.getElementById('cfg-'+k).value);const d=await api('/api/admin/config/'+k,'PUT',{valor:v});if(d.ok)toast('Guardado')}
+
+/* CANJES */
+function fmtHora(f){if(!f)return '';try{const d=new Date(f.replace(' ','T'));return d.toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false})}catch(e){return ''}}
+async function loadCanjes(){
+  const d=await api('/api/admin/canjes');
+  const pend=(d.ok&&d.pendientes)?d.pendientes:[];
+  const usados=(d.ok&&d.usados)?d.usados:[];
+  const badge=document.getElementById('adm-canjes-badge');
+  if(pend.length){badge.textContent=pend.length;badge.style.display='inline-block'}else badge.style.display='none';
+  document.getElementById('adm-canjes-list').innerHTML=pend.length?pend.map(c=>`
+    <div style="background:var(--surface2);border:1px solid var(--line);border-left:3px solid var(--accent);padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px">
+      <div style="flex:1;min-width:0">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;letter-spacing:.5px;font-weight:600">${c.premio}</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:3px"><b style="color:var(--accent)">${c.usuario}</b>${c.nombre?' · '+c.nombre:''} <span style="color:var(--faint);margin-left:6px">${fmtHora(c.fecha)} hs</span></div>
+      </div>
+      <button class="btn btn-sm" style="background:var(--ok);color:#fff" onclick="entregarCanjeAdm('${c.codigo_unico}')">Entregar</button>
+    </div>`).join(''):'<div class="empty">No hay canjes pendientes</div>';
+  document.getElementById('adm-canjes-usados').innerHTML=usados.length?usados.map(c=>`
+    <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--line);opacity:.6">
+      <div style="flex:1"><span style="font-weight:600">${c.premio}</span> <span style="color:var(--muted);font-size:13px">— ${c.usuario}</span></div>
+      <span style="font-size:12px;color:var(--faint)">${fmtHora(c.fecha)}</span>
+    </div>`).join(''):'<div class="empty">Sin entregas hoy</div>';
+}
+async function entregarCanjeAdm(codigo){
+  if(!confirm('¿Confirmar entrega? No se puede deshacer.'))return;
+  const d=await api('/api/admin/canjes/'+codigo+'/entregar','POST');
+  if(d.ok){toast('Canje entregado');loadCanjes()}else toast(d.error||'Error',false);
+}
 
 check();
 </script>
