@@ -39,12 +39,14 @@ def q(conn, sql, params=None):
         cur = conn.cursor()
         if params:
             # Convert :name style to %s style for pg8000.dbapi
+            # Ojo: NO tocar los :: de PostgreSQL (casts como ::text, ::date)
             import re
             keys = []
             def replace_param(m):
                 keys.append(m.group(1))
                 return '%s'
-            sql2 = re.sub(r':([a-zA-Z_][a-zA-Z0-9_]*)', replace_param, sql)
+            # (?<!:) evita matchear el segundo : de un :: ; (?!:) evita el primero
+            sql2 = re.sub(r'(?<!:):([a-zA-Z_][a-zA-Z0-9_]*)', replace_param, sql)
             values = [params[k] for k in keys]
             cur.execute(sql2, values)
         else:
