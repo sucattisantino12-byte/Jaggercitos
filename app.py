@@ -635,6 +635,42 @@ def get_config_api():
              {'bid': admin['boliche_id']})
     return jsonify([dict(r) for r in rows])
 
+@app.route('/api/admin/canjes')
+def admin_canjes():
+    admin = require_admin()
+    if not admin: return jsonify({'ok': False}), 401
+    db = get_db()
+    pend = q(db, '''SELECT c.codigo_unico, c.created_at::text as fecha, p.nombre as premio,
+                           u.usuario, COALESCE(u.nombre,'') as nombre
+                    FROM canjes c JOIN premios p ON p.id=c.premio_id
+                    JOIN boliche_usuarios bu ON bu.id=c.boliche_usuario_id
+                    JOIN usuarios u ON u.id=bu.usuario_id
+                    WHERE bu.boliche_id=:bid AND c.usado=FALSE
+                    ORDER BY c.created_at DESC LIMIT 100''', {'bid': admin['boliche_id']})
+    usados = q(db, '''SELECT c.codigo_unico, c.usado_at::text as fecha, p.nombre as premio,
+                             u.usuario, COALESCE(u.nombre,'') as nombre
+                      FROM canjes c JOIN premios p ON p.id=c.premio_id
+                      JOIN boliche_usuarios bu ON bu.id=c.boliche_usuario_id
+                      JOIN usuarios u ON u.id=bu.usuario_id
+                      WHERE bu.boliche_id=:bid AND c.usado=TRUE AND c.usado_at::date=CURRENT_DATE
+                      ORDER BY c.usado_at DESC LIMIT 100''', {'bid': admin['boliche_id']})
+    return jsonify({'ok': True, 'pendientes': [safe(r) for r in pend], 'usados': [safe(r) for r in usados]})
+
+@app.route('/api/admin/canjes/<codigo>/entregar', methods=['POST'])
+def admin_entregar_canje(codigo):
+    admin = require_admin()
+    if not admin: return jsonify({'ok': False}), 401
+    db = get_db()
+    row = q1(db, '''SELECT c.id, c.usado FROM canjes c
+                    JOIN boliche_usuarios bu ON bu.id=c.boliche_usuario_id
+                    WHERE c.codigo_unico=:c AND bu.boliche_id=:bid''',
+             {'c': codigo, 'bid': admin['boliche_id']})
+    if not row: return jsonify({'ok': False, 'error': 'Canje no encontrado'})
+    if row['usado']: return jsonify({'ok': False, 'error': 'Ya fue entregado'})
+    q(db, 'UPDATE canjes SET usado=TRUE, usado_at=NOW() WHERE id=:id', {'id': str(row['id'])})
+    db.commit()
+    return jsonify({'ok': True})
+
 @app.route('/api/admin/config/<clave>', methods=['PUT'])
 def update_config(clave):
     admin = require_admin(['owner'])
@@ -733,6 +769,69 @@ def external_registrar():
     q(db, 'UPDATE boliche_usuarios SET jaggercitos=jaggercitos+:t WHERE id=:id', {'t': total,'id': buid})
     db.commit()
     return jsonify({'ok': True,'pts_sumados': total})
+
+@app.route('/api/external/cerrar-noche', methods=['POST'])
+def external_cerrar_noche():
+    if request.headers.get('X-API-Key') != EXTERNAL_API_KEY:
+        return jsonify({'ok': False}), 403
+    body = request.get_json() or {}
+    slug = body.get('boliche', 'club-jagger')
+    db = get_db()
+    b = q1(db, 'SELECT id FROM boliches WHERE slug=:s', {'s': slug})
+    if not b: return jsonify({'ok': False, 'error': 'Boliche no encontrado'})
+    q(db, 'UPDATE eventos SET activo=FALSE WHERE boliche_id=:bid AND activo=TRUE', {'bid': str(b['id'])})
+    db.commit()
+    return jsonify({'ok': True})
+
+@app.route('/api/external/canjes', methods=['GET'])
+def external_canjes():
+    if request.headers.get('X-API-Key') != EXTERNAL_API_KEY:
+        return jsonify({'ok': False}), 403
+    usuario_q = request.args.get('usuario', '').strip()
+    slug = request.args.get('boliche', 'club-jagger')
+    db = get_db()
+    u = q1(db, 'SELECT id FROM usuarios WHERE usuario ILIKE :u OR dni=:d LIMIT 1', {'u': usuario_q, 'd': usuario_q})
+    if not u: return jsonify({'ok': False, 'error': 'Usuario no encontrado'})
+    b = q1(db, 'SELECT id FROM boliches WHERE slug=:s', {'s': slug})
+    if not b: return jsonify({'ok': False, 'error': 'Boliche no encontrado'})
+    bu = q1(db, 'SELECT id FROM boliche_usuarios WHERE usuario_id=:uid AND boliche_id=:bid',
+            {'uid': str(u['id']), 'bid': str(b['id'])})
+    if not bu: return jsonify({'ok': True, 'canjes': []})
+    rows = q(db, '''SELECT c.id, c.codigo_unico, c.usado, c.created_at::text as fecha, p.nombre as premio
+                    FROM canjes c JOIN premios p ON p.id=c.premio_id
+                    WHERE c.boliche_usuario_id=:buid
+                    ORDER BY c.usado ASC, c.created_at DESC LIMIT 30''', {'buid': str(bu['id'])})
+    return jsonify({'ok': True, 'canjes': [safe(r) for r in rows]})
+
+@app.route('/api/external/canjes/<codigo>/entregar', methods=['POST'])
+def external_entregar_canje(codigo):
+    if request.headers.get('X-API-Key') != EXTERNAL_API_KEY:
+        return jsonify({'ok': False}), 403
+    db = get_db()
+    row = q1(db, 'SELECT id, usado FROM canjes WHERE codigo_unico=:c', {'c': codigo})
+    if not row: return jsonify({'ok': False, 'error': 'Canje no encontrado'})
+    if row['usado']: return jsonify({'ok': False, 'error': 'Este canje ya fue entregado'})
+    q(db, 'UPDATE canjes SET usado=TRUE, usado_at=NOW() WHERE id=:id', {'id': str(row['id'])})
+    db.commit()
+    return jsonify({'ok': True})
+
+@app.route('/api/external/canjes-pendientes', methods=['GET'])
+def external_canjes_pendientes():
+    if request.headers.get('X-API-Key') != EXTERNAL_API_KEY:
+        return jsonify({'ok': False}), 403
+    slug = request.args.get('boliche', 'club-jagger')
+    db = get_db()
+    b = q1(db, 'SELECT id FROM boliches WHERE slug=:s', {'s': slug})
+    if not b: return jsonify({'ok': False, 'error': 'Boliche no encontrado'})
+    rows = q(db, '''SELECT c.codigo_unico, c.created_at::text as fecha, p.nombre as premio,
+                           u.usuario, COALESCE(u.nombre,'') as nombre
+                    FROM canjes c
+                    JOIN premios p ON p.id=c.premio_id
+                    JOIN boliche_usuarios bu ON bu.id=c.boliche_usuario_id
+                    JOIN usuarios u ON u.id=bu.usuario_id
+                    WHERE bu.boliche_id=:bid AND c.usado=FALSE
+                    ORDER BY c.created_at DESC LIMIT 100''', {'bid': str(b['id'])})
+    return jsonify({'ok': True, 'canjes': [safe(r) for r in rows]})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5001)), debug=False)
