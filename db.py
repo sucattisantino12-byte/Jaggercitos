@@ -84,5 +84,17 @@ def init_db():
     except Exception as e:
         print(f'[db] Sync warning: {e}')
         conn.rollback()
+    # Migrar categorías de texto existentes a la tabla categorias (idempotente)
+    try:
+        cur.execute("""INSERT INTO categorias (boliche_id, nombre)
+            SELECT boliche_id, categoria FROM premios
+            WHERE categoria IS NOT NULL AND categoria != ''
+            GROUP BY boliche_id, categoria
+            ON CONFLICT DO NOTHING""")
+        conn.commit()
+        print('[db] Categorías migradas OK')
+    except Exception as e:
+        print(f'[db] Categorías warning: {e}')
+        conn.rollback()
     conn.close()
     print(f'[db] {count} tablas encontradas OK')
