@@ -2,716 +2,817 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
-<meta name="theme-color" content="#0B0B0E">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0a0908">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>ClubPass</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{
-  --bg:#0B0B0E;--surface:#15151A;--surface2:#1D1D24;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.14);
-  --text:#EDEAE0;--muted:#8A8794;--faint:#55525E;
-  --accent:#C9A227;--accent-soft:rgba(201,162,39,.12);--accent-line:rgba(201,162,39,.35);
-  --ok:#3DA35D;--ok-soft:rgba(61,163,93,.12);--err:#D64545;
-  --st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);--nav:64px;
-}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;background:var(--bg)}
-body{font-family:'Archivo',sans-serif;color:var(--text);font-size:15px;overflow:hidden;overscroll-behavior:none}
-.disp{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase}
-
-.screen{position:fixed;inset:0;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;transition:transform .3s cubic-bezier(.4,0,.2,1),opacity .3s;z-index:1}
-.screen.off{transform:translateX(100%);opacity:0;pointer-events:none}
-.screen.under{transform:translateX(-24%);opacity:0;pointer-events:none}
-.pad-nav{padding-bottom:calc(var(--nav) + var(--sb) + 24px)}
-
-/* icons */
-.ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;display:block}
-.ic-sm{width:17px;height:17px}
-
-/* SPLASH */
-#splash{display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:90}
-.sp-mark{width:46px;height:46px;border:1.5px solid var(--accent);position:relative;opacity:0;animation:fadeIn .7s .2s forwards}
-.sp-mark::after{content:'';position:absolute;inset:6px;border:1.5px solid var(--line2)}
-.sp-name{font-size:34px;letter-spacing:10px;color:var(--text);margin-top:22px;opacity:0;animation:fadeIn .8s .5s forwards;font-weight:600}
-.sp-sub{font-size:11px;letter-spacing:4px;color:var(--faint);margin-top:6px;text-transform:uppercase;opacity:0;animation:fadeIn .8s .8s forwards}
-@keyframes fadeIn{to{opacity:1}}
-
-/* AUTH */
-#auth .wrap{min-height:100dvh;display:flex;flex-direction:column;justify-content:flex-end;padding:0 22px calc(34px + var(--sb))}
-.a-name{font-size:38px;letter-spacing:8px;font-weight:600;color:var(--text)}
-.a-name b{color:var(--accent);font-weight:600}
-.a-sub{font-size:11px;letter-spacing:3.5px;color:var(--faint);text-transform:uppercase;margin:4px 0 34px}
-.a-tabs{display:flex;border:1px solid var(--line2);margin-bottom:22px}
-.a-tab{flex:1;padding:11px;background:none;border:none;color:var(--muted);font-family:'Archivo',sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer}
-.a-tab.on{background:var(--accent);color:#0B0B0E}
-.fld{margin-bottom:13px}
-.fld label{display:block;font-size:10.5px;letter-spacing:1.8px;color:var(--muted);text-transform:uppercase;font-weight:600;margin-bottom:6px}
-.inp{width:100%;background:var(--surface);border:1px solid var(--line);color:var(--text);padding:13px 14px;font-family:'Archivo',sans-serif;font-size:16px;outline:none;border-radius:2px}
-.inp:focus{border-color:var(--accent)}
-.inp::placeholder{color:var(--faint)}
-.seg{display:flex;gap:8px}
-.seg button{flex:1;padding:11px 4px;background:var(--surface);border:1px solid var(--line);color:var(--muted);font-family:'Archivo',sans-serif;font-size:12.5px;font-weight:500;cursor:pointer;border-radius:2px}
-.seg button.on{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
-.btn{width:100%;padding:15px;background:var(--accent);color:#0B0B0E;border:none;font-family:'Archivo',sans-serif;font-size:14px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;border-radius:2px;margin-top:6px}
-.btn:active{opacity:.85}
-.btn-ghost{background:none;border:1px solid var(--line2);color:var(--text);font-weight:600}
-.msg-err{color:var(--err);font-size:13px;text-align:center;margin-top:10px;display:none}
-.msg-ok{color:var(--ok);font-size:13px;text-align:center;margin-top:10px;display:none}
-
-/* HOME */
-.h-head{padding:calc(var(--st) + 22px) 20px 6px}
-.h-hello{font-size:12px;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
-.h-name{font-size:34px;letter-spacing:1.5px;font-weight:600;margin-top:2px}
-.sec-label{display:flex;align-items:center;gap:12px;padding:26px 20px 14px;font-size:11px;letter-spacing:2.5px;color:var(--muted);text-transform:uppercase;font-weight:600}
-.sec-label::after{content:'';flex:1;height:1px;background:var(--line)}
-.b-card{margin:0 20px 14px;position:relative;height:150px;cursor:pointer;border:1px solid var(--line2);overflow:hidden;border-radius:3px;background:var(--surface)}
-.b-card:active{opacity:.85}
-.b-card img{width:100%;height:100%;object-fit:cover;display:block}
-.b-card .ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--faint)}
-.b-card .ov{position:absolute;inset:0;background:linear-gradient(to top,rgba(5,5,8,.92),rgba(5,5,8,.15) 65%,transparent)}
-.b-card .nm{position:absolute;left:16px;bottom:14px;right:16px}
-.b-card .nm .t{font-size:26px;letter-spacing:3px;font-weight:600;color:#fff}
-.b-card .nm .d{font-size:12px;color:rgba(255,255,255,.55);margin-top:1px;font-family:'Archivo',sans-serif}
-.b-card .edge{position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--bc,#C9A227)}
-
-/* BOLICHE (premios) */
-.bo-head{position:sticky;top:0;z-index:12;background:var(--bg);border-bottom:1px solid var(--line);padding:calc(var(--st) + 10px) 16px 0}
-.bo-row{display:flex;align-items:center;gap:12px;padding-bottom:10px}
-.iconbtn{width:38px;height:38px;display:flex;align-items:center;justify-content:center;background:var(--surface);border:1px solid var(--line);color:var(--text);cursor:pointer;border-radius:2px;flex-shrink:0}
-.bo-name{font-size:24px;letter-spacing:3px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bo-pts{text-align:right;flex-shrink:0}
-.bo-pts .n{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:600;color:var(--accent);line-height:1}
-.bo-pts .l{font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase}
-.cat-bar{display:flex;gap:6px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none}
-.cat-bar::-webkit-scrollbar{display:none}
-.chip{padding:7px 14px;background:var(--surface);border:1px solid var(--line);color:var(--muted);font-size:12.5px;font-weight:600;letter-spacing:.5px;cursor:pointer;white-space:nowrap;border-radius:2px;font-family:'Archivo',sans-serif}
-.chip.on{background:var(--accent);border-color:var(--accent);color:#0B0B0E}
-.srch{position:relative;margin:14px 16px 4px}
-.srch .ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--faint)}
-.srch input{width:100%;background:var(--surface);border:1px solid var(--line);color:var(--text);padding:11px 12px 11px 40px;font-family:'Archivo',sans-serif;font-size:14px;outline:none;border-radius:2px}
-.p-sec{padding:0 16px}
-.p-sec-title{display:flex;align-items:baseline;gap:10px;margin:22px 0 10px;padding-bottom:7px;border-bottom:1px solid var(--line2)}
-.p-sec-title .t{font-size:19px;letter-spacing:2.5px;font-weight:600}
-.p-sec-title .c{font-size:11px;color:var(--faint);letter-spacing:1px}
-.p-item{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--line2);padding:13px 14px;margin-bottom:9px;border-radius:2px}
-.p-item.full{border-left-color:var(--ok)}
-.p-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:9px}
-.p-nm{font-weight:600;font-size:15px}
-.p-pr{font-size:13px;color:var(--muted);margin-top:2px}
-.p-req{margin-left:auto;text-align:right;flex-shrink:0}
-.p-req .n{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:600;color:var(--accent);line-height:1}
-.p-req .l{font-size:9px;letter-spacing:1.2px;color:var(--faint);text-transform:uppercase}
-.bar{height:4px;background:var(--surface2);overflow:hidden;margin-bottom:6px}
-.bar i{display:block;height:100%;background:var(--accent);transition:width .4s}
-.bar.done i{background:var(--ok)}
-.p-foot{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted)}
-.p-foot .ok{color:var(--ok);font-weight:600}
-.btn-canje{width:100%;margin-top:10px;padding:11px;background:var(--accent);color:#0B0B0E;border:none;font-family:'Archivo',sans-serif;font-size:12.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;border-radius:2px}
-
-/* PERFIL */
-.pf-head{padding:calc(var(--st) + 22px) 20px 0;display:flex;align-items:center;justify-content:space-between}
-.pf-title{font-size:30px;letter-spacing:3px;font-weight:600}
-.pf-card{margin:18px 20px 0;background:var(--surface);border:1px solid var(--line);padding:18px;display:flex;gap:16px;align-items:center;border-radius:3px}
-.avatar{width:64px;height:64px;flex-shrink:0;position:relative;cursor:pointer}
-.avatar .img{width:100%;height:100%;object-fit:cover;background:var(--surface2);border:1px solid var(--line2);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:28px;color:var(--accent);border-radius:2px;overflow:hidden}
-.avatar .img img{width:100%;height:100%;object-fit:cover}
-.avatar .cam{position:absolute;right:-6px;bottom:-6px;width:24px;height:24px;background:var(--accent);color:#0B0B0E;display:flex;align-items:center;justify-content:center;border-radius:2px}
-.pf-nm{font-size:21px;letter-spacing:1px;font-weight:600}
-.pf-meta{font-size:12.5px;color:var(--muted);margin-top:2px}
-.row-item{display:flex;align-items:center;gap:14px;padding:15px 20px;border-bottom:1px solid var(--line);cursor:pointer;background:none;width:100%;border-left:none;border-right:none;border-top:none;color:var(--text);font-family:'Archivo',sans-serif;font-size:14.5px;text-align:left}
-.row-item .ric{color:var(--muted);flex-shrink:0}
-.row-item .sub{font-size:12px;color:var(--muted);margin-top:1px}
-.row-item .chev{margin-left:auto;color:var(--faint)}
-.mini-b{display:flex;align-items:center;gap:13px;padding:14px 20px;border-bottom:1px solid var(--line);cursor:pointer}
-.mini-b .sq{width:38px;height:38px;border:1px solid var(--line2);border-left:3px solid var(--bc,#C9A227);background:var(--surface);flex-shrink:0}
-.mini-b .pts{margin-left:auto;text-align:right}
-.mini-b .pts .n{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:600;color:var(--accent)}
-.mini-b .pts .l{font-size:9px;color:var(--faint);letter-spacing:1px;text-transform:uppercase}
-.canje-pend{margin:0 20px;border:1px solid var(--accent-line);border-left:3px solid var(--accent);background:var(--accent-soft);padding:14px;margin-bottom:10px;border-radius:2px}
-.canje-pend .t{font-weight:600;font-size:15px}
-.canje-pend .s{font-size:12px;color:var(--muted);margin-top:2px}
-.canje-pend button{margin-top:10px;width:100%;padding:10px;background:var(--accent);border:none;color:#0B0B0E;font-weight:700;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;font-family:'Archivo',sans-serif;cursor:pointer;border-radius:2px}
-
-/* SHEET (modal inferior) */
-.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:80;display:none;align-items:flex-end}
-.sheet-bg.show{display:flex}
-.sheet{background:var(--surface);border-top:1px solid var(--line2);width:100%;padding:24px 22px calc(26px + var(--sb));animation:up .3s cubic-bezier(.4,0,.2,1)}
-@keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
-.sheet h3{font-family:'Barlow Condensed',sans-serif;font-size:24px;letter-spacing:2.5px;text-transform:uppercase;font-weight:600;margin-bottom:4px}
-.sheet .sub{font-size:13px;color:var(--muted);margin-bottom:18px}
-.sheet .btns{display:flex;flex-direction:column;gap:9px;margin-top:18px}
-.btn-ok{width:100%;padding:14px;background:var(--ok);color:#fff;border:none;font-family:'Archivo',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;border-radius:2px}
-
-/* NAV */
-.nav{position:fixed;left:0;right:0;bottom:0;height:calc(var(--nav) + var(--sb));background:var(--surface);border-top:1px solid var(--line);display:none;z-index:50;padding-bottom:var(--sb)}
-.nav .in{display:flex;align-items:stretch;height:var(--nav);max-width:480px;margin:0 auto;width:100%}
-.nav button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;color:var(--faint);font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;font-weight:600;cursor:pointer}
-.nav button.on{color:var(--accent)}
-.nav .mid{flex:0 0 84px;display:flex;align-items:center;justify-content:center}
-.caja-btn{width:60px;height:60px;margin-top:-18px;background:var(--accent);color:#0B0B0E;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;border-radius:4px;box-shadow:0 6px 18px rgba(201,162,39,.35);font-family:'Archivo',sans-serif;font-size:8.5px;font-weight:700;letter-spacing:1px}
-.caja-btn:active{transform:scale(.94)}
-
-/* CAJA (pantalla blanca) */
-#caja{position:fixed;inset:0;background:#fff;z-index:100;display:none;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;text-align:center}
-#caja .brand{position:absolute;top:calc(var(--st) + 18px);left:0;right:0;font-family:'Barlow Condensed',sans-serif;font-size:15px;letter-spacing:5px;color:#9a978f;text-transform:uppercase}
-#caja .usr{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:clamp(56px,19vw,110px);letter-spacing:3px;color:#101010;line-height:.95;word-break:break-all;text-transform:uppercase}
-#caja .pant{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:clamp(34px,11vw,64px);color:#444;margin-top:14px;letter-spacing:2px;text-transform:uppercase}
-#caja .pant-l{font-size:10px;letter-spacing:2.5px;color:#b3b0a8;text-transform:uppercase;margin-top:20px;font-family:'Archivo',sans-serif;font-weight:600}
-#caja .canje-box{margin-top:26px;border:1.5px solid #111;padding:16px 22px;max-width:340px;width:100%}
-#caja .canje-box .l{font-size:10px;letter-spacing:2.5px;color:#999;text-transform:uppercase;font-family:'Archivo',sans-serif;font-weight:700}
-#caja .canje-box .p{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:600;color:#111;margin-top:4px;letter-spacing:1px;text-transform:uppercase}
-#caja .x{position:absolute;top:calc(var(--st) + 12px);right:16px;width:38px;height:38px;background:none;border:1px solid #ddd;color:#888;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center}
-
-.toast{position:fixed;bottom:calc(var(--nav) + var(--sb) + 14px);left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--accent);color:var(--accent);padding:11px 20px;font-size:13.5px;font-weight:600;z-index:200;display:none;white-space:nowrap;border-radius:2px}
-.empty{text-align:center;padding:42px 20px;color:var(--faint);font-size:13.5px}
-.confetti{position:fixed;bottom:0;pointer-events:none;z-index:300;animation:rise var(--dur) var(--del) cubic-bezier(.2,.8,.4,1) forwards}
-@keyframes rise{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(calc(-100vh - 60px)) translateX(var(--dx)) rotate(var(--rt));opacity:0}}
-.hist{display:flex;align-items:center;gap:13px;padding:13px 20px;border-bottom:1px solid var(--line)}
-.hist .pts{margin-left:auto;font-family:'Barlow Condensed',sans-serif;font-size:21px;font-weight:600;color:var(--accent)}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  button,input{font-family:inherit;}
+  ::-webkit-scrollbar{width:0;height:0;}
+  html,body{height:100%;background:#0a0908;}
+  body{font-family:'Hanken Grotesk',system-ui,sans-serif;color:#f4f1ea;overflow:hidden;overscroll-behavior:none;}
+  .sg{font-family:'Space Grotesk',sans-serif;}
+  :root{
+    --bg:#0a0908;--surface:#141210;--surface2:#1b1815;--surface3:#1f1b16;
+    --line:rgba(245,241,234,0.08);--line2:rgba(245,241,234,0.12);
+    --text:#f4f1ea;--muted:#9a948a;--faint:#6b665e;--faint2:#5c574f;
+    --accent:#d4a829;--accent-soft:rgba(212,168,41,0.12);--accent-line:rgba(212,168,41,0.3);
+    --ok:#3da35d;--err:#c0564a;
+    --st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);
+  }
+  @keyframes cp-sheet{from{transform:translateY(100%);}to{transform:translateY(0);}}
+  @keyframes cp-fade{from{opacity:0;}to{opacity:1;}}
+  @keyframes cp-scr{from{opacity:0;transform:translateX(10px);}to{opacity:1;transform:translateX(0);}}
+  @keyframes cp-toast{0%{opacity:0;transform:translate(-50%,-10px);}100%{opacity:1;transform:translate(-50%,0);}}
+  @keyframes cp-pop{0%{transform:scale(.85);opacity:0;}100%{transform:scale(1);opacity:1;}}
+  @keyframes cp-rise{0%{transform:translateY(0) rotate(0);opacity:1;}100%{transform:translateY(calc(-100vh - 60px)) translateX(var(--dx)) rotate(var(--rt));opacity:0;}}
+  .app{position:fixed;inset:0;max-width:480px;margin:0 auto;background:var(--bg);overflow:hidden;}
+  .screen{position:absolute;inset:0;display:flex;flex-direction:column;animation:cp-scr .3s ease;}
+  .hide{display:none!important;}
+  .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  .ic{stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block;}
+  .toast{position:fixed;top:calc(var(--st) + 16px);left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--accent-line);color:var(--accent);padding:11px 20px;border-radius:12px;font-size:14px;font-weight:600;z-index:200;display:none;white-space:nowrap;box-shadow:0 8px 30px rgba(0,0,0,.5);animation:cp-toast .3s ease;}
+  .empty{text-align:center;padding:46px 20px;color:var(--faint);font-size:14px;}
+  input::placeholder{color:var(--faint2);}
 </style>
 </head>
 <body>
-
-<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
-<symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></symbol>
-<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></symbol>
-<symbol id="i-gift" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4"/><path d="M5 12v9h14v-9M12 8v13"/><path d="M12 8c-2.5 0-4.5-1-4.5-2.7C7.5 3.9 8.6 3 9.8 3c1.7 0 2.2 2.4 2.2 5zm0 0c2.5 0 4.5-1 4.5-2.7C16.5 3.9 15.4 3 14.2 3 12.5 3 12 5.4 12 8z"/></symbol>
-<symbol id="i-id" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1"/><circle cx="9" cy="11" r="2.2"/><path d="M5.5 17c.6-1.8 1.9-2.8 3.5-2.8s2.9 1 3.5 2.8M15 9.5h4M15 13h4"/></symbol>
-<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.4-4.4"/></symbol>
-<symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
-<symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
-<symbol id="i-cam" viewBox="0 0 24 24"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.2"/></symbol>
-<symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></symbol>
-<symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14"/><path d="m3 7 9 6 9-6"/></symbol>
-<symbol id="i-out" viewBox="0 0 24 24"><path d="M14 4h6v16h-6M10 8l-4 4 4 4M6 12h11"/></symbol>
-<symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V3h9l9 9-9 9z"/><circle cx="8" cy="8" r="1.4"/></symbol>
-<symbol id="i-tkt" viewBox="0 0 24 24"><path d="M3 8a2 2 0 0 0 0 8v3h18v-3a2 2 0 0 1 0-8V5H3z"/><path d="M13 5v14" stroke-dasharray="2.5 2.5"/></symbol>
-<symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></symbol>
-<symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L20 8l-4-4L4 16z"/><path d="m13 7 4 4"/></symbol>
-</svg>
-
-<!-- SPLASH -->
-<div id="splash" class="screen disp">
-  <div class="sp-mark"></div>
-  <div class="sp-name">CLUB<b style="color:var(--accent)">PASS</b></div>
-  <div class="sp-sub">La noche te premia</div>
-</div>
-
-<!-- AUTH -->
-<div id="auth" class="screen off">
-  <div class="wrap">
-    <div>
-      <div class="a-name disp">CLUB<b>PASS</b></div>
-      <div class="a-sub">La noche te premia</div>
-    </div>
-    <div class="a-tabs">
-      <button class="a-tab on" onclick="authTab('login',this)">Ingresar</button>
-      <button class="a-tab" onclick="authTab('reg',this)">Crear cuenta</button>
-    </div>
-    <div id="t-login">
-      <div class="fld"><label>Usuario o email</label><input class="inp" id="l-user" autocomplete="username"></div>
-      <div class="fld"><label>Contraseña</label><input class="inp" type="password" id="l-pass" onkeydown="if(event.key==='Enter')doLogin()"></div>
-      <button class="btn" onclick="doLogin()">Ingresar</button>
-      <div class="msg-err" id="l-err"></div>
-    </div>
-    <div id="t-reg" style="display:none">
-      <div class="fld"><label>Usuario único</label><input class="inp" id="r-user" placeholder="sin espacios" oninput="this.value=this.value.toLowerCase().replace(/\s/g,'')"></div>
-      <div class="fld"><label>Nombre completo</label><input class="inp" id="r-nombre"></div>
-      <div class="fld"><label>Género</label>
-        <div class="seg">
-          <button class="on" id="g-M" onclick="setGen('M')">Hombre</button>
-          <button id="g-F" onclick="setGen('F')">Mujer</button>
-          <button id="g-X" onclick="setGen('X')">No especificar</button>
-        </div>
-      </div>
-      <div class="fld"><label>DNI</label><input class="inp" id="r-dni" inputmode="numeric"></div>
-      <div class="fld"><label>Email</label><input class="inp" id="r-email" inputmode="email"></div>
-      <div class="fld"><label>Contraseña</label><input class="inp" type="password" id="r-pass" placeholder="mínimo 6 caracteres"></div>
-      <div class="fld"><label>Confirmar contraseña</label><input class="inp" type="password" id="r-pass2"></div>
-      <button class="btn" onclick="doReg()">Crear cuenta</button>
-      <div class="msg-err" id="r-err"></div>
-      <div class="msg-ok" id="r-ok">Cuenta creada. Ya podés ingresar.</div>
-    </div>
-  </div>
-</div>
-
-<!-- HOME -->
-<div id="home" class="screen off">
-  <div class="pad-nav">
-    <div class="h-head">
-      <div class="h-hello" id="h-hello">Bienvenido</div>
-      <div class="h-name disp" id="h-name">—</div>
-    </div>
-    <div class="sec-label">Boliches</div>
-    <div id="b-list"></div>
-  </div>
-</div>
-
-<!-- BOLICHE = PREMIOS -->
-<div id="boliche" class="screen off">
-  <div class="bo-head">
-    <div class="bo-row">
-      <button class="iconbtn" onclick="goHome()"><svg class="ic ic-sm"><use href="#i-back"/></svg></button>
-      <div class="bo-name disp" id="bo-name">—</div>
-      <div class="bo-pts">
-        <div class="n" id="bo-pts">0</div>
-        <div class="l" id="bo-pts-l">puntos</div>
-      </div>
-    </div>
-    <div class="cat-bar" id="cat-bar"></div>
-  </div>
-  <div class="srch">
-    <svg class="ic ic-sm"><use href="#i-search"/></svg>
-    <input id="p-srch" placeholder="Buscar premio" oninput="filtrar(this.value)">
-  </div>
-  <div id="p-list" class="pad-nav"></div>
-</div>
-
-<!-- PERFIL -->
-<div id="perfil" class="screen off">
-  <div class="pad-nav">
-    <div class="pf-head"><div class="pf-title disp">Mi perfil</div></div>
-    <div class="pf-card">
-      <div class="avatar" onclick="pickAvatar()">
-        <div class="img" id="pf-avatar">?</div>
-        <div class="cam"><svg class="ic" style="width:13px;height:13px"><use href="#i-cam"/></svg></div>
-      </div>
-      <div style="flex:1;min-width:0">
-        <div class="pf-nm" id="pf-nombre">—</div>
-        <div class="pf-meta" id="pf-meta">—</div>
-      </div>
-    </div>
-
-    <div class="sec-label">Nombre en pantalla</div>
-    <div style="padding:0 20px">
-      <div style="font-size:12.5px;color:var(--muted);margin-bottom:10px">Es el nombre que aparece en el ranking del boliche. Decilo en recepción o caja, o mostralo en la pantalla blanca.</div>
-      <div style="display:flex;gap:8px">
-        <input class="inp" id="pf-pantalla" placeholder="ej: FLORENCIA" style="flex:1" oninput="this.value=this.value.toUpperCase()">
-        <button class="btn" style="width:auto;margin:0;padding:0 18px" onclick="guardarPantalla()">Guardar</button>
-      </div>
-    </div>
-
-    <div class="sec-label" id="pend-label" style="display:none">Canjes pendientes</div>
-    <div id="pend-list"></div>
-
-    <div class="sec-label">Mis boliches</div>
-    <div id="pf-boliches"></div>
-
-    <div class="sec-label">Entradas</div>
-    <div id="pf-entradas"><div class="empty">Sin entradas disponibles por ahora</div></div>
-
-    <div class="sec-label">Cuenta</div>
-    <button class="row-item" onclick="openSheet('foto')">
-      <svg class="ic ric"><use href="#i-cam"/></svg>
-      <span>Cambiar foto de perfil</span>
-      <svg class="ic ic-sm chev"><use href="#i-chev"/></svg>
-    </button>
-    <button class="row-item" onclick="openSheet('pass')">
-      <svg class="ic ric"><use href="#i-lock"/></svg>
-      <span>Cambiar contraseña</span>
-      <svg class="ic ic-sm chev"><use href="#i-chev"/></svg>
-    </button>
-    <button class="row-item" onclick="openSheet('email')">
-      <svg class="ic ric"><use href="#i-mail"/></svg>
-      <div><div>Cambiar email</div><div class="sub" id="email-actual">—</div></div>
-      <svg class="ic ic-sm chev"><use href="#i-chev"/></svg>
-    </button>
-    <button class="row-item" onclick="logout()" style="color:var(--err)">
-      <svg class="ic ric" style="color:var(--err)"><use href="#i-out"/></svg>
-      <span>Cerrar sesión</span>
-    </button>
-  </div>
-</div>
-
-<!-- NAV -->
-<div class="nav" id="nav">
-  <div class="in">
-    <button id="n-home" class="on" onclick="navGo('home')">
-      <svg class="ic"><use href="#i-home"/></svg><span>Inicio</span>
-    </button>
-    <div class="mid">
-      <button class="caja-btn" onclick="abrirCaja()">
-        <svg class="ic" style="stroke:#0B0B0E"><use href="#i-id"/></svg>
-        <span>CAJA</span>
-      </button>
-    </div>
-    <button id="n-perfil" onclick="navGo('perfil')">
-      <svg class="ic"><use href="#i-user"/></svg><span>Perfil</span>
-    </button>
-  </div>
-</div>
-
-<!-- CAJA BLANCA -->
-<div id="caja">
-  <button class="x" onclick="cerrarCaja()">✕</button>
-  <div class="brand">CLUBPASS</div>
-  <div class="usr" id="caja-usr">—</div>
-  <div class="pant-l" id="caja-pant-l" style="display:none">Nombre en pantalla</div>
-  <div class="pant" id="caja-pant" style="display:none">—</div>
-  <div class="canje-box" id="caja-canje" style="display:none">
-    <div class="l">Canje a entregar</div>
-    <div class="p" id="caja-canje-nombre">—</div>
-  </div>
-</div>
-
-<!-- SHEET CANJE OK -->
-<div class="sheet-bg" id="sh-canje" onclick="if(event.target===this)closeSheets()">
-  <div class="sheet">
-    <h3 style="color:var(--accent)">Canje exitoso</h3>
-    <div class="sub">Canjeaste <b id="sh-canje-nombre" style="color:var(--text)">—</b></div>
-    <div class="btns">
-      <button class="btn" style="margin:0" onclick="usarAhora()">Usar ahora</button>
-      <button class="btn-ok" onclick="usarDespues()">Usar después</button>
-    </div>
-  </div>
-</div>
-
-<!-- SHEETS CUENTA -->
-<div class="sheet-bg" id="sh-pass" onclick="if(event.target===this)closeSheets()">
-  <div class="sheet">
-    <h3>Cambiar contraseña</h3>
-    <div class="fld" style="margin-top:14px"><label>Contraseña actual</label><input class="inp" type="password" id="cp-old"></div>
-    <div class="fld"><label>Nueva contraseña</label><input class="inp" type="password" id="cp-new" placeholder="mínimo 6 caracteres"></div>
-    <div class="fld"><label>Confirmar nueva</label><input class="inp" type="password" id="cp-new2"></div>
-    <button class="btn" onclick="cambiarPass()">Guardar</button>
-    <div class="msg-err" id="cp-err"></div>
-  </div>
-</div>
-
-<div class="sheet-bg" id="sh-email" onclick="if(event.target===this)closeSheets()">
-  <div class="sheet">
-    <h3>Cambiar email</h3>
-    <div class="fld" style="margin-top:14px"><label>Nuevo email</label><input class="inp" type="email" id="ce-new"></div>
-    <div class="fld"><label>Contraseña</label><input class="inp" type="password" id="ce-pass"></div>
-    <button class="btn" onclick="cambiarEmail()">Guardar</button>
-    <div class="msg-err" id="ce-err"></div>
-  </div>
-</div>
-
-<input type="file" id="f-avatar" accept="image/*" style="display:none" onchange="subirAvatar(this)">
+<div class="app" id="app"></div>
+<input type="file" id="f-avatar" accept="image/*" style="display:none">
 <div class="toast" id="toast"></div>
-
 <script>
-let U=null, B=null, PREMIOS=[], MYBU=null, CAT='todos', canjeNuevo=null;
+// Catálogo de íconos SVG para premios (se adaptan al color del boliche con currentColor)
+const ICON_CATALOG = {
+ "Entradas y acceso": [
+  {
+   "nombre": "Ticket",
+   "svg": "<path d=\"M3 9V7.5A1.5 1.5 0 0 1 4.5 6h15A1.5 1.5 0 0 1 21 7.5V9a2 2 0 0 0 0 4v1.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 14.5V13a2 2 0 0 0 0-4z\"></path><path d=\"M14.5 6.5v11\" stroke-dasharray=\"1.5 2.2\"></path>"
+  },
+  {
+   "nombre": "Pase QR",
+   "svg": "<path d=\"M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z\"></path><path d=\"M14 14h2.5v2.5M20 14v3.5M16.5 20H20M14 18v2\"></path>"
+  },
+  {
+   "nombre": "Beneficio",
+   "svg": "<path d=\"M12 3l2.5 5.2 5.7.8-4.1 4 .97 5.7L12 16l-5.1 2.7.97-5.7-4.1-4 5.7-.8z\"></path>"
+  }
+ ],
+ "Mesas y VIP": [
+  {
+   "nombre": "Lounge",
+   "svg": "<path d=\"M5 11V8.5A2.5 2.5 0 0 1 7.5 6h9A2.5 2.5 0 0 1 19 8.5V11\"></path><path d=\"M3.6 11h16.8a1.6 1.6 0 0 1 1.6 1.6V16a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-3.4A1.6 1.6 0 0 1 3.6 11z\"></path><path d=\"M5 17v2M19 17v2\"></path>"
+  },
+  {
+   "nombre": "Corona VIP",
+   "svg": "<path d=\"M3 8l3.2 2.6L12 5l5.8 5.6L21 8l-1.4 10.5a1 1 0 0 1-1 .9H5.4a1 1 0 0 1-1-.9z\"></path><path d=\"M8.5 14.5h7\"></path>"
+  },
+  {
+   "nombre": "Reservado",
+   "svg": "<rect x=\"4\" y=\"6\" width=\"16\" height=\"12\" rx=\"1.6\"></rect><path d=\"M8 10h8M8 13.5h5\"></path>"
+  }
+ ],
+ "Tragos": [
+  {
+   "nombre": "Martini",
+   "svg": "<path d=\"M4 4.5h16L12 13z\"></path><path d=\"M12 13v6M8 19.5h8\"></path><path d=\"M15 7.2l2.8-2.7\"></path><circle cx=\"17.9\" cy=\"4.4\" r=\"0.7\"></circle>"
+  },
+  {
+   "nombre": "Gin tonic",
+   "svg": "<path d=\"M6.5 6h11l-1.2 13.2a1 1 0 0 1-1 .8H8.7a1 1 0 0 1-1-.8z\"></path><path d=\"M7 10.5h10\"></path><path d=\"M14 6V3.5\"></path><circle cx=\"9.6\" cy=\"8.3\" r=\"1\"></circle>"
+  },
+  {
+   "nombre": "Copa de vino",
+   "svg": "<path d=\"M7.5 4h9c0 3.6-2 5.9-4.5 5.9S7.5 7.6 7.5 4z\"></path><path d=\"M12 9.9V19M8.5 19.5h7\"></path>"
+  }
+ ],
+ "Shots": [
+  {
+   "nombre": "Shot",
+   "svg": "<path d=\"M7.5 6.5h9l-1 12.2a1 1 0 0 1-1 .9h-5a1 1 0 0 1-1-.9z\"></path><path d=\"M8 12.5h8\"></path>"
+  },
+  {
+   "nombre": "Ronda",
+   "svg": "<path d=\"M3.5 8h6l-.7 9.5a1 1 0 0 1-1 .9H5.2a1 1 0 0 1-1-.9z\"></path><path d=\"M14.5 8h6l-.7 9.5a1 1 0 0 1-1 .9h-2.6a1 1 0 0 1-1-.9z\"></path>"
+  },
+  {
+   "nombre": "Medida",
+   "svg": "<path d=\"M8 4h8l-4 6.5zM8 20h8l-4-6.5z\"></path><path d=\"M12 10.5v3\"></path>"
+  }
+ ],
+ "Sin alcohol": [
+  {
+   "nombre": "Gaseosa",
+   "svg": "<path d=\"M6.5 7h11l-1.1 12.2a1 1 0 0 1-1 .9H8.6a1 1 0 0 1-1-.9z\"></path><path d=\"M6.2 7l.5-2.5h10.6l.5 2.5\"></path><path d=\"M13.5 4.5L12 9\"></path>"
+  },
+  {
+   "nombre": "Energizante",
+   "svg": "<rect x=\"7.5\" y=\"4\" width=\"9\" height=\"16\" rx=\"1.6\"></rect><path d=\"M12 7.5l-2 4h3l-2 4\"></path>"
+  },
+  {
+   "nombre": "Agua",
+   "svg": "<path d=\"M10 2.5h4v2.2l1.1 2.1V19a1.5 1.5 0 0 1-1.5 1.5h-3.2A1.5 1.5 0 0 1 8.9 19V6.8L10 4.7z\"></path><path d=\"M8.9 10.5h6.2\"></path>"
+  }
+ ],
+ "Cervezas": [
+  {
+   "nombre": "Chopp",
+   "svg": "<path d=\"M6 6.5h9v12.5a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1z\"></path><path d=\"M15 9h2.5A1.5 1.5 0 0 1 19 10.5v3A1.5 1.5 0 0 1 17.5 15H15\"></path><path d=\"M6 9.5h9\"></path>"
+  },
+  {
+   "nombre": "Porrón",
+   "svg": "<path d=\"M10 2.5h4v3l1.1 2V19.5a1 1 0 0 1-1 1h-4.2a1 1 0 0 1-1-1V7.5l1.1-2z\"></path><path d=\"M10 11h4\"></path>"
+  },
+  {
+   "nombre": "Pinta",
+   "svg": "<path d=\"M7 5h10l-1.3 14a1 1 0 0 1-1 .9H9.3a1 1 0 0 1-1-.9z\"></path><path d=\"M7.4 8.5h9.2\"></path>"
+  }
+ ],
+ "Botellas": [
+  {
+   "nombre": "Botella",
+   "svg": "<path d=\"M10 2.5h4v3.5l1.6 2.4V19.5a1.5 1.5 0 0 1-1.5 1.5H9.9a1.5 1.5 0 0 1-1.5-1.5V8.4L10 6z\"></path><path d=\"M8.4 12h7.2\"></path>"
+  },
+  {
+   "nombre": "Frapera",
+   "svg": "<path d=\"M5 8.5h14l-1.4 10.8a1 1 0 0 1-1 .9H7.4a1 1 0 0 1-1-.9z\"></path><path d=\"M5 8.5l.6-2h12.8l.6 2\"></path><path d=\"M10.5 8.5V4.5h3v4\"></path>"
+  },
+  {
+   "nombre": "Bottle service",
+   "svg": "<path d=\"M10 9.5h4v9a1.2 1.2 0 0 1-1.2 1.2h-1.6A1.2 1.2 0 0 1 10 18.5z\"></path><path d=\"M12 9.5V6.5\"></path><path d=\"M12 2l.8 1.8 2 .2-1.5 1.4.45 2L12 6.4l-1.75 1 .45-2L9.2 4l2-.2z\"></path>"
+  }
+ ],
+ "Champagne": [
+  {
+   "nombre": "Champ. botella",
+   "svg": "<path d=\"M10.5 2.5h3v3l.8 2v12.5a1.5 1.5 0 0 1-1.5 1.5h-1.6a1.5 1.5 0 0 1-1.5-1.5V7.5l.8-2z\"></path><path d=\"M10 12.5h4\"></path>"
+  },
+  {
+   "nombre": "Flauta",
+   "svg": "<path d=\"M9.5 3.5h5l-.8 8a1.7 1.7 0 0 1-3.4 0z\"></path><path d=\"M12 11.5V19M9 19.5h6\"></path>"
+  },
+  {
+   "nombre": "Brindis",
+   "svg": "<path d=\"M8 3.2l1 6.3a1.5 1.5 0 0 0 3-.3l-.4-5.5z\"></path><path d=\"M10 9.8l1.4 8.4M8.5 19h5.5\" transform=\"rotate(-10 11 14)\"></path><path d=\"M16.5 3.2l-1 6.3a1.5 1.5 0 0 1-3-.3l.4-5.5z\"></path><path d=\"M14.5 9.8L13.1 18.2M16.6 19h-5.5\" transform=\"rotate(10 13.5 14)\"></path>"
+  }
+ ]
+};
+
+// Devuelve el inner SVG de un ícono por su id "seccion::nombre"
+function getIconSvg(id){
+  if(!id) return null;
+  const [sec,nom] = id.split('::');
+  const grupo = ICON_CATALOG[sec]; if(!grupo) return null;
+  const item = grupo.find(x=>x.nombre===nom); return item?item.svg:null;
+}
+function iconHtml(id, size=22){
+  const inner = getIconSvg(id);
+  if(!inner) return '';
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+}
+
+
+/* ════════ ESTADO ════════ */
+let U=null, B=null, PREMIOS=[], CATS=[], MYBU=null, CAT='__todos', canjeNuevo=null, GEN='M', AUTHTAB='login', cajaMonitor=null;
 try{const s=localStorage.getItem('cp_u');if(s)U=JSON.parse(s)}catch(e){}
 
-const CATS=['Bebidas','Shots','Tragos','Bottle Service','Champagne','Importados','Beneficios','Otro'];
-
-window.addEventListener('load',()=>{
-  if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
-  setTimeout(()=>{
-    if(U){show('home');loadHome();document.getElementById('nav').style.display='block';refreshMe();}
-    else show('auth');
-  },1700);
-});
-
-function show(id){
-  document.querySelectorAll('.screen').forEach(s=>{
-    if(s.id===id)s.classList.remove('off','under');
-    else if(!s.classList.contains('off')){s.classList.add('under');setTimeout(()=>{s.classList.add('off');s.classList.remove('under')},300)}
-  });
+const NIVELES=[{n:'Básico',min:0,c:'#9a948a'},{n:'Plata',min:300,c:'#c8cdd6'},{n:'Oro',min:1000,c:'#d4a829'},{n:'VIP',min:3000,c:'#9b7bd4'}];
+function nivelInfo(pts){
+  let idx=0; for(let i=0;i<NIVELES.length;i++){if(pts>=NIVELES[i].min)idx=i;}
+  const cur=NIVELES[idx], next=NIVELES[idx+1];
+  const pct=next?Math.min(100,Math.round((pts-cur.min)/(next.min-cur.min)*100)):100;
+  return {nivel:idx+1, nombre:cur.n, color:cur.c, pct, next, falta:next?next.min-pts:0};
 }
-function navGo(id){
-  document.getElementById('n-home').classList.toggle('on',id==='home');
-  document.getElementById('n-perfil').classList.toggle('on',id==='perfil');
-  show(id);
-  if(id==='home')loadHome();
-  if(id==='perfil')loadPerfil();
-}
-function goHome(){navGo('home')}
+
+const A=document.getElementById('app');
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function fmt(n){return (n||0).toLocaleString('es-AR');}
+function ptsName(){return B&&B.slug==='club-jagger'?'jaggercitos':'puntos';}
+function accent(){return (B&&B.color_primario)||'#d4a829';}
 
 function toast(m,ok=true){
   const t=document.getElementById('toast');
-  t.textContent=m;
-  t.style.borderColor=ok?'var(--accent)':'var(--err)';
-  t.style.color=ok?'var(--accent)':'var(--err)';
+  t.textContent=m;t.style.borderColor=ok?'var(--accent-line)':'rgba(192,86,74,.4)';t.style.color=ok?'var(--accent)':'var(--err)';
   t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',2600);
 }
 async function api(u,m='GET',b=null){
   const o={method:m,headers:{'Content-Type':'application/json'}};
   if(b)o.body=JSON.stringify(b);
-  try{const r=await fetch(u,o);return r.json()}catch(e){return{ok:false,error:'Sin conexión'}}
+  try{const r=await fetch(u,o);return await r.json();}catch(e){return{ok:false,error:'Sin conexión'};}
 }
 
-/* AUTH */
-let GEN='M';
-function authTab(t,btn){
-  document.querySelectorAll('.a-tab').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
-  document.getElementById('t-login').style.display=t==='login'?'block':'none';
-  document.getElementById('t-reg').style.display=t==='reg'?'block':'none';
-}
-function setGen(g){GEN=g;['M','F','X'].forEach(x=>document.getElementById('g-'+x).classList.toggle('on',x===g))}
+/* ════════ ÍCONOS UI ════════ */
+const UI={
+  home:'<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>',
+  card:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/>',
+  cardPend:'<path d="M2 9V7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4Z"/><path d="M13 5v2M13 17v2M13 11v2"/>',
+  back:'<path d="m15 18-6-6 6-6"/>',
+  chev:'<path d="m9 18 6-6-6-6"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  cam:'<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+  edit:'<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+  ticket:'<path d="M2 9V7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4Z"/>',
+  gift:'<rect x="3" y="8" width="18" height="4"/><path d="M5 12v9h14v-9M12 8v13"/><path d="M12 8C9.5 8 7.5 7 7.5 5.3 7.5 3.9 8.6 3 9.8 3 11.5 3 12 5.4 12 8zm0 0c2.5 0 4.5-1 4.5-2.7C16.5 3.9 15.4 3 14.2 3 12.5 3 12 5.4 12 8z"/>',
+  out:'<path d="M14 4h6v16h-6M10 8l-4 4 4 4M6 12h11"/>',
+  moon:'<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/>',
+  star:'<path d="M12 3l2.5 5.2 5.7.8-4.1 4 .97 5.7L12 16l-5.1 2.7.97-5.7-4.1-4 5.7-.8z"/>',
+  trophy:'<path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3M9 19h6M10 16h4v3h-4z"/>',
+};
+function svg(name,size=22,sw=2){return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${UI[name]||''}</svg>`;}
 
-async function doLogin(){
-  const u=document.getElementById('l-user').value.trim(), p=document.getElementById('l-pass').value;
-  if(!u||!p)return;
-  const d=await api('/api/auth/login','POST',{usuario:u,password:p});
-  if(d.ok){
-    U=d.usuario; localStorage.setItem('cp_u',JSON.stringify(U));
-    document.getElementById('nav').style.display='block';
-    show('home');loadHome();
+/* ════════ ROUTER ════════ */
+let VIEW='splash', BTAB='premios';
+function render(){
+  if(VIEW==='splash'){A.innerHTML=splashHTML();return;}
+  if(VIEW==='auth'){A.innerHTML=authHTML();return;}
+  let html='';
+  if(VIEW==='home')html=homeHTML();
+  else if(VIEW==='boliche')html=bolicheHTML();
+  else if(VIEW==='perfil')html=perfilHTML();
+  A.innerHTML=html+navHTML();
+}
+function go(v){VIEW=v;render();
+  if(v==='home')loadHome();
+  if(v==='perfil')loadPerfil();
+}
+
+/* ════════ SPLASH ════════ */
+function splashHTML(){
+  return `<div class="screen" style="align-items:center;justify-content:center;background:radial-gradient(120% 80% at 50% 0%,rgba(212,168,41,0.10) 0%,#0a0908 55%);">
+    <div style="display:flex;flex-direction:column;align-items:center;animation:cp-pop .6s ease;">
+      <div style="width:60px;height:60px;border-radius:18px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#0a0908;font-weight:700;font-size:30px;" class="sg">C</div>
+      <div class="sg" style="font-size:30px;font-weight:700;letter-spacing:-.01em;margin-top:18px;">ClubPass</div>
+      <div style="font-size:12px;color:var(--faint);letter-spacing:.18em;text-transform:uppercase;margin-top:8px;">Tu vida nocturna, premiada</div>
+    </div>
+  </div>`;
+}
+
+/* ════════ AUTH ════════ */
+function authHTML(){
+  const tabBtn=(id,txt)=>`<button onclick="setAuthTab('${id}')" style="flex:1;padding:11px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;background:${AUTHTAB===id?'var(--accent)':'transparent'};color:${AUTHTAB===id?'#0a0908':'var(--muted)'};">${txt}</button>`;
+  const field=(label,id,type='text',ph='',extra='')=>`<div style="display:flex;flex-direction:column;gap:7px;">
+    <label style="font-size:11px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;font-weight:600;">${label}</label>
+    <input id="${id}" type="${type}" placeholder="${ph}" ${extra} style="background:var(--surface);border:1px solid var(--line2);border-radius:13px;color:var(--text);padding:14px 16px;font-size:15px;outline:none;" />
+  </div>`;
+  let form;
+  if(AUTHTAB==='login'){
+    form=`<div style="display:flex;flex-direction:column;gap:12px;animation:cp-fade .25s ease;">
+      ${field('Usuario o email','l-user','text','tu.usuario','autocomplete="username"')}
+      ${field('Contraseña','l-pass','password','••••••••','onkeydown="if(event.key===&quot;Enter&quot;)doLogin()"')}
+      <button onclick="doLogin()" style="margin-top:6px;width:100%;background:var(--accent);color:#0a0908;border:none;border-radius:14px;padding:16px;font-size:15px;font-weight:700;cursor:pointer;">Ingresar</button>
+      <div id="auth-err" style="color:var(--err);font-size:13px;text-align:center;display:none;"></div>
+    </div>`;
   }else{
-    const e=document.getElementById('l-err');e.textContent=d.error||'Datos incorrectos';e.style.display='block';
+    const gen=(g,t)=>`<button onclick="setGen('${g}')" style="flex:1;padding:11px 4px;border-radius:11px;border:1px solid ${GEN===g?'var(--accent)':'var(--line2)'};background:${GEN===g?'var(--accent-soft)':'var(--surface)'};color:${GEN===g?'var(--accent)':'var(--muted)'};font-size:12.5px;font-weight:600;cursor:pointer;">${t}</button>`;
+    form=`<div style="display:flex;flex-direction:column;gap:11px;animation:cp-fade .25s ease;">
+      <div style="display:flex;gap:11px;">
+        <div style="flex:1;">${field('Usuario','r-user','text','juanito92','oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9._]/g,&quot;&quot;)"')}</div>
+        <div style="flex:1;">${field('DNI','r-dni','text','38904551','inputmode="numeric"')}</div>
+      </div>
+      ${field('Nombre completo','r-nombre','text','Juan García')}
+      <div style="display:flex;flex-direction:column;gap:7px;">
+        <label style="font-size:11px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;font-weight:600;">Género</label>
+        <div style="display:flex;gap:8px;">${gen('M','Hombre')}${gen('F','Mujer')}${gen('X','Otro')}</div>
+      </div>
+      ${field('Email','r-email','email','tu@email.com','inputmode="email"')}
+      ${field('Contraseña','r-pass','password','Mínimo 6 caracteres')}
+      ${field('Confirmar contraseña','r-pass2','password','Repetí la contraseña')}
+      <button onclick="doRegistro()" style="margin-top:6px;width:100%;background:var(--accent);color:#0a0908;border:none;border-radius:14px;padding:16px;font-size:15px;font-weight:700;cursor:pointer;">Crear cuenta</button>
+      <div id="auth-err" style="color:var(--err);font-size:13px;text-align:center;display:none;"></div>
+      <div id="auth-ok" style="color:var(--ok);font-size:13px;text-align:center;display:none;">Cuenta creada. Ya podés ingresar.</div>
+    </div>`;
   }
+  return `<div class="screen" style="justify-content:flex-end;padding:0 26px calc(40px + var(--sb));background:radial-gradient(120% 80% at 50% 0%,rgba(212,168,41,0.10) 0%,#0a0908 55%);overflow-y:auto;">
+    <div style="text-align:center;margin-bottom:34px;">
+      <div style="display:inline-flex;align-items:center;gap:10px;">
+        <div class="sg" style="width:34px;height:34px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#0a0908;font-weight:700;font-size:18px;">C</div>
+        <span class="sg" style="font-size:26px;font-weight:700;letter-spacing:-.01em;">ClubPass</span>
+      </div>
+      <div style="font-size:12.5px;color:var(--faint);letter-spacing:.18em;text-transform:uppercase;margin-top:12px;">Tu vida nocturna, premiada</div>
+    </div>
+    <div style="display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:4px;margin-bottom:20px;">${tabBtn('login','Ingresar')}${tabBtn('reg','Crear cuenta')}</div>
+    ${form}
+  </div>`;
 }
-async function doReg(){
+function setAuthTab(t){AUTHTAB=t;render();}
+function setGen(g){GEN=g;render();}
+
+/* ════════ AUTH LÓGICA ════════ */
+async function doLogin(){
+  const user=document.getElementById('l-user').value.trim(), pass=document.getElementById('l-pass').value;
+  if(!user||!pass)return;
+  const d=await api('/api/auth/login','POST',{usuario:user,password:pass});
+  if(d.ok){U=d.usuario;localStorage.setItem('cp_u',JSON.stringify(U));go('home');}
+  else{const e=document.getElementById('auth-err');e.textContent=d.error||'Datos incorrectos';e.style.display='block';}
+}
+async function doRegistro(){
   const usuario=document.getElementById('r-user').value.trim();
   const nombre=document.getElementById('r-nombre').value.trim();
   const dni=document.getElementById('r-dni').value.trim();
   const email=document.getElementById('r-email').value.trim();
-  const pass=document.getElementById('r-pass').value;
-  const pass2=document.getElementById('r-pass2').value;
-  const err=document.getElementById('r-err');err.style.display='none';
-  if(!usuario||!nombre||!dni||!email||!pass){err.textContent='Completá todos los campos';err.style.display='block';return}
-  if(pass.length<6){err.textContent='La contraseña debe tener al menos 6 caracteres';err.style.display='block';return}
-  if(pass!==pass2){err.textContent='Las contraseñas no coinciden';err.style.display='block';return}
+  const pass=document.getElementById('r-pass').value, pass2=document.getElementById('r-pass2').value;
+  const err=document.getElementById('auth-err');err.style.display='none';
+  if(!usuario||!nombre||!dni||!email||!pass){err.textContent='Completá todos los campos';err.style.display='block';return;}
+  if(pass.length<6){err.textContent='La contraseña debe tener al menos 6 caracteres';err.style.display='block';return;}
+  if(pass!==pass2){err.textContent='Las contraseñas no coinciden';err.style.display='block';return;}
   const d=await api('/api/auth/registro','POST',{usuario,nombre,genero:GEN,dni,email,password:pass});
-  if(d.ok){
-    document.getElementById('r-ok').style.display='block';
-    setTimeout(()=>authTab('login',document.querySelectorAll('.a-tab')[0]),1300);
-  }else{err.textContent=d.error||'Error al registrarse';err.style.display='block'}
+  if(d.ok){document.getElementById('auth-ok').style.display='block';setTimeout(()=>{AUTHTAB='login';render();},1300);}
+  else{err.textContent=d.error||'Error al registrarse';err.style.display='block';}
 }
-function logout(){
-  U=null;localStorage.removeItem('cp_u');
-  document.getElementById('nav').style.display='none';
-  show('auth');
-}
+function logout(){U=null;localStorage.removeItem('cp_u');go('auth');}
 
 async function refreshMe(){
   if(!U)return;
   const d=await api('/api/auth/me?usuario='+encodeURIComponent(U.usuario));
-  if(d.ok){U={...U,...d.usuario,boliches:d.boliches};localStorage.setItem('cp_u',JSON.stringify(U))}
+  if(d.ok){U={...U,...d.usuario,boliches:d.boliches};localStorage.setItem('cp_u',JSON.stringify(U));}
 }
 
-/* HOME */
+/* ════════ HOME ════════ */
+function homeHTML(){
+  const g=U.genero, hi=g==='F'?'Bienvenida':(g==='X'?'Hola':'Bienvenido');
+  const ini=(U.nombre||U.usuario||'?')[0].toUpperCase();
+  return `<div class="screen">
+    <div style="flex:none;padding:calc(var(--st) + 24px) 22px 12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:13px;color:var(--muted);">${hi}</div>
+          <div class="sg" style="font-size:25px;font-weight:700;letter-spacing:-.01em;margin-top:2px;">${esc(U.nombre||U.usuario)}</div>
+        </div>
+        <div class="sg" style="width:46px;height:46px;border-radius:14px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:var(--accent);border:1px solid var(--accent-line);overflow:hidden;">${U.avatar?`<img src="${U.avatar}" style="width:100%;height:100%;object-fit:cover;">`:ini}</div>
+      </div>
+    </div>
+    <div class="scroll" style="padding:14px 22px calc(100px + var(--sb));">
+      <div style="font-size:12px;color:var(--faint);letter-spacing:.06em;text-transform:uppercase;font-weight:600;margin:6px 2px 14px;">Boliches</div>
+      <div id="home-list" style="display:flex;flex-direction:column;gap:14px;"><div class="empty">Cargando...</div></div>
+    </div>
+  </div>${navHTML()}`;
+}
 async function loadHome(){
   if(!U)return;
-  const g=U.genero;
-  document.getElementById('h-hello').textContent=g==='F'?'Bienvenida':(g==='X'?'Hola':'Bienvenido');
-  document.getElementById('h-name').textContent=U.nombre||U.usuario;
   const bs=await api('/api/boliches');
-  document.getElementById('b-list').innerHTML=(bs||[]).map(b=>`
-    <div class="b-card" style="--bc:${b.color_primario||'#C9A227'}" onclick='entrar(${JSON.stringify(b).replace(/'/g,"&#39;")})'>
-      ${b.logo_url?`<img src="${b.logo_url}" alt="">`:`<div class="ph"><svg class="ic" style="width:34px;height:34px"><use href="#i-moon"/></svg></div>`}
-      <div class="ov"></div><div class="edge"></div>
-      <div class="nm"><div class="t disp">${b.nombre}</div>${b.descripcion?`<div class="d">${b.descripcion}</div>`:''}</div>
-    </div>`).join('')||'<div class="empty">Sin boliches disponibles</div>';
+  await refreshMe();
+  const cont=document.getElementById('home-list');if(!cont)return;
+  if(!bs||!bs.length){cont.innerHTML='<div class="empty">No hay boliches disponibles</div>';return;}
+  cont.innerHTML=bs.map(b=>{
+    const mybu=(U.boliches||[]).find(x=>x.slug===b.slug);
+    const pts=mybu?mybu.jaggercitos:0;
+    const tint=b.color_primario||'#d4a829';
+    const pn=b.slug==='club-jagger'?'jaggercitos':'puntos';
+    const mono=(b.nombre||'?')[0].toUpperCase();
+    const bg=b.logo_url?`background:#100e0b center/cover url('${b.logo_url}');`:`background:linear-gradient(150deg,${tint}22,#100e0b 70%);`;
+    return `<button onclick='openBoliche(${JSON.stringify(b).replace(/'/g,"&#39;")})' style="position:relative;display:block;width:100%;text-align:left;height:158px;border-radius:20px;border:1px solid var(--line2);overflow:hidden;cursor:pointer;${bg}color:inherit;">
+      <div style="position:absolute;inset:0;background:linear-gradient(160deg,transparent 30%,rgba(10,9,8,.55) 78%,rgba(10,9,8,.9) 100%);"></div>
+      <div style="position:absolute;top:14px;left:16px;right:16px;display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:7px;">
+          <span style="width:7px;height:7px;border-radius:50%;background:${tint};box-shadow:0 0 10px ${tint};"></span>
+          <span style="font-size:11px;color:rgba(244,241,234,.85);letter-spacing:.04em;">${esc(b.descripcion||'')}</span>
+        </div>
+        <div class="sg" style="width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;background:${tint};color:#0a0908;font-weight:700;font-size:15px;">${mono}</div>
+      </div>
+      <div style="position:absolute;left:16px;bottom:14px;right:16px;display:flex;align-items:flex-end;justify-content:space-between;">
+        <div class="sg" style="font-weight:700;font-size:26px;letter-spacing:-.01em;color:#fff;">${esc(b.nombre)}</div>
+        <div style="text-align:right;">
+          <div class="sg" style="font-weight:700;font-size:22px;color:${tint};">${fmt(pts)}</div>
+          <div style="font-size:10px;color:rgba(244,241,234,.6);letter-spacing:.06em;text-transform:uppercase;">${pn}</div>
+        </div>
+      </div>
+    </button>`;
+  }).join('');
 }
 
-/* BOLICHE → PREMIOS */
-async function entrar(b){
-  B=b;
-  document.documentElement.style.setProperty('--accent',b.color_primario||'#C9A227');
-  document.documentElement.style.setProperty('--accent-soft',(b.color_primario||'#C9A227')+'1f');
-  document.documentElement.style.setProperty('--accent-line',(b.color_primario||'#C9A227')+'59');
-  document.getElementById('bo-name').textContent=b.nombre;
-  document.getElementById('bo-pts-l').textContent=b.slug==='club-jagger'?'jaggercitos':'puntos';
-  show('boliche');
+/* ════════ BOLICHE ════════ */
+async function openBoliche(b){
+  B=b;BTAB='premios';VIEW='boliche';
   await refreshMe();
-  MYBU=(U.boliches||[]).find(x=>x.slug===b.slug);
-  document.getElementById('bo-pts').textContent=(MYBU?.jaggercitos||0).toLocaleString();
+  MYBU=(U.boliches||[]).find(x=>x.slug===b.slug)||{jaggercitos:0,nivel:1};
   const ps=await api('/api/premios?boliche='+b.slug);
   PREMIOS=(ps||[]).filter(p=>p.activo);
-  CAT='todos';
-  renderCats();renderPremios();
-  document.getElementById('p-srch').value='';
+  const cs=await api('/api/categorias?boliche='+b.slug);
+  CATS=cs||[];
+  CAT='__todos';
+  render();
+}
+function bolicheHTML(){
+  const tint=accent();
+  const mono=(B.nombre||'?')[0].toUpperCase();
+  const tabBtn=(id,txt)=>`<button onclick="setBTab('${id}')" style="flex:1;padding:13px;background:none;border:none;border-bottom:2px solid ${BTAB===id?tint:'transparent'};color:${BTAB===id?'var(--text)':'var(--muted)'};font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;">${txt}</button>`;
+  return `<div class="screen" style="--accent:${tint};">
+    <div style="flex:none;padding:calc(var(--st) + 18px) 20px 0;background:#100e0b;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button onclick="go('home')" style="flex:none;width:36px;height:36px;border-radius:11px;border:1px solid var(--line2);background:transparent;display:flex;align-items:center;justify-content:center;color:var(--text);cursor:pointer;"><svg class="ic" width="18" height="18" viewBox="0 0 24 24">${UI.back}</svg></button>
+        <div class="sg" style="flex:none;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:${tint};color:#0a0908;font-weight:700;font-size:14px;">${mono}</div>
+        <div class="sg" style="font-weight:700;font-size:20px;letter-spacing:-.01em;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(B.nombre)}</div>
+      </div>
+      <div style="display:flex;margin-top:14px;">${tabBtn('perfil','Perfil')}${tabBtn('premios','Premios')}</div>
+    </div>
+    ${BTAB==='perfil'?bolPerfilHTML():bolPremiosHTML()}
+  </div>${navHTML()}`;
+}
+function setBTab(t){BTAB=t;render();}
+function cajaBloqueada(){toast('Entrá a un boliche para usar la caja',false);}
+
+function bolPerfilHTML(){
+  const tint=accent();
+  const pts=MYBU.jaggercitos||0, ni=nivelInfo(pts);
+  const ini=(U.usuario||'?')[0].toUpperCase();
+  const heroBg=`linear-gradient(160deg,${tint}1a,var(--surface) 60%)`;
+  return `<div class="scroll" style="padding:18px 20px calc(100px + var(--sb));animation:cp-fade .2s ease;">
+    <div style="border-radius:20px;padding:22px;background:${heroBg};border:1px solid ${tint}33;text-align:center;">
+      <div class="sg" style="width:72px;height:72px;border-radius:22px;margin:0 auto 12px;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:28px;color:${tint};overflow:hidden;">${U.avatar?`<img src="${U.avatar}" style="width:100%;height:100%;object-fit:cover;">`:ini}</div>
+      <div style="font-size:17px;font-weight:600;">@${esc(U.usuario)}</div>
+      <span style="display:inline-block;margin-top:8px;font-size:11.5px;font-weight:700;color:${ni.color};border:1px solid ${ni.color};padding:3px 11px;border-radius:999px;">Nv ${ni.nivel} · ${ni.nombre}</span>
+      <div class="sg" style="font-weight:700;font-size:44px;letter-spacing:-.02em;margin-top:14px;color:#fff;">${fmt(pts)}</div>
+      <div style="font-size:11px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;">${ptsName()}</div>
+      <div style="margin-top:16px;height:6px;border-radius:999px;background:rgba(245,241,234,.10);overflow:hidden;"><div style="height:100%;width:${ni.pct}%;background:${tint};border-radius:999px;transition:width .5s;"></div></div>
+      <div style="margin-top:8px;font-size:12px;color:var(--muted);">${ni.next?`Faltan ${fmt(ni.falta)} para ${ni.next.n}`:'¡Nivel máximo!'}</div>
+    </div>
+    <button onclick="openDisplaySheet()" style="margin-top:14px;width:100%;text-align:left;background:var(--surface);border:1px solid ${tint}33;border-radius:16px;padding:14px 16px;cursor:pointer;color:inherit;display:flex;align-items:center;gap:13px;">
+      <div style="flex:none;width:40px;height:40px;border-radius:12px;background:var(--surface3);display:flex;align-items:center;justify-content:center;color:${tint};"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" stroke-width="1.8">${UI.user}</svg></div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;">Nombre para mostrar</div>
+        <div style="font-size:16px;font-weight:600;margin-top:1px;">${esc(U.nombre_pantalla||U.usuario)}</div>
+        <div style="font-size:11.5px;color:var(--faint);margin-top:2px;">Con este nombre te ven en el ranking. Cambialo cuando quieras.</div>
+      </div>
+      <svg class="ic" width="17" height="17" viewBox="0 0 24 24" stroke="var(--faint2)">${UI.edit}</svg>
+    </button>
+    <button onclick="openCaja()" style="margin-top:10px;width:100%;background:${tint};color:#0a0908;border:none;border-radius:15px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;"><svg class="ic" width="18" height="18" viewBox="0 0 24 24">${UI.card}</svg>Mostrar en caja</button>
+    <div style="font-size:12px;color:var(--faint);margin:24px 2px 8px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;">Mis asistencias</div>
+    <div id="hist-list"><div class="empty">Cargando...</div></div>
+  </div>`;
 }
 
-function renderCats(){
-  const have=[...new Set(PREMIOS.map(p=>p.categoria||'Otro'))].sort((a,b)=>{
-    const ai=CATS.indexOf(a),bi=CATS.indexOf(b);return(ai<0?99:ai)-(bi<0?99:bi)});
-  document.getElementById('cat-bar').innerHTML=['todos',...have].map(c=>
-    `<button class="chip ${CAT===c?'on':''}" onclick="selCat('${c}')">${c==='todos'?'Todos':c}</button>`).join('');
+/* ════════ PREMIOS TAB ════════ */
+function bolPremiosHTML(){
+  const tint=accent();
+  const pts=MYBU.jaggercitos||0;
+  const heroBg=`linear-gradient(160deg,${tint}1a,var(--surface) 60%)`;
+  // chips de categorías
+  const chips=[{id:'__todos',label:'Todos'},...CATS.map(c=>({id:c.nombre,label:c.nombre}))];
+  const chipHTML=chips.map(c=>`<button onclick="setCat('${esc(c.id).replace(/'/g,"\\'")}')" style="flex:none;padding:8px 15px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;background:${CAT===c.id?tint:'var(--surface)'};color:${CAT===c.id?'#0a0908':'var(--muted)'};border:1px solid ${CAT===c.id?tint:'var(--line)'};">${esc(c.label)}</button>`).join('');
+  return `<div style="flex:1;display:flex;flex-direction:column;overflow:hidden;animation:cp-fade .2s ease;">
+    <div style="flex:none;padding:14px 20px 6px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;background:${heroBg};border:1px solid ${tint}33;border-radius:13px;padding:13px 16px;">
+        <span style="font-size:11px;color:#cfc8ba;font-weight:600;letter-spacing:.08em;text-transform:uppercase;">Tu saldo</span>
+        <span class="sg" style="font-weight:700;font-size:20px;color:#fff;">${fmt(pts)} <span style="font-size:11.5px;color:${tint};font-weight:600;">${ptsName()}</span></span>
+      </div>
+      <div style="position:relative;margin-top:12px;">
+        <div style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--faint);display:flex;"><svg class="ic" width="15" height="15" viewBox="0 0 24 24">${UI.search}</svg></div>
+        <input id="prem-search" oninput="renderPremios(this.value)" placeholder="Buscar premio" style="width:100%;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 12px 11px 37px;color:var(--text);font-size:13.5px;outline:none;" />
+      </div>
+      <div style="display:flex;gap:8px;overflow-x:auto;padding:12px 0 4px;">${chipHTML}</div>
+    </div>
+    <div class="scroll" style="padding:8px 20px calc(100px + var(--sb));"><div id="prem-list"></div></div>
+  </div>`;
 }
-function selCat(c){CAT=c;renderCats();renderPremios();document.getElementById('p-srch').value=''}
-
-function filtrar(q){renderPremios(q)}
+function setCat(c){CAT=c;render();}
 
 function renderPremios(q=''){
-  const pts=MYBU?.jaggercitos||0;
-  const unidad=B?.slug==='club-jagger'?'jaggercitos':'puntos';
-  let lista=CAT==='todos'?PREMIOS:PREMIOS.filter(p=>(p.categoria||'Otro')===CAT);
+  const cont=document.getElementById('prem-list');if(!cont)return;
+  const tint=accent();
+  const pts=MYBU.jaggercitos||0;
+  let lista=CAT==='__todos'?PREMIOS:PREMIOS.filter(p=>(p.categoria||'')===CAT);
   if(q)lista=lista.filter(p=>p.nombre.toLowerCase().includes(q.toLowerCase()));
-  const el=document.getElementById('p-list');
-  if(!lista.length){el.innerHTML='<div class="empty">No hay premios para mostrar</div>';return}
-  const cats=[...new Set(lista.map(p=>p.categoria||'Otro'))].sort((a,b)=>{
-    const ai=CATS.indexOf(a),bi=CATS.indexOf(b);return(ai<0?99:ai)-(bi<0?99:bi)});
-  el.innerHTML=cats.map(cat=>{
-    const items=lista.filter(p=>(p.categoria||'Otro')===cat).sort((a,b)=>a.precio_pesos-b.precio_pesos);
-    return `<div class="p-sec">
-      <div class="p-sec-title"><span class="t disp">${cat}</span><span class="c">${items.length} ${items.length===1?'premio':'premios'}</span></div>
-      ${items.map(p=>{
-        const need=p.pts_necesarios||0;
-        const pct=need<=0?100:Math.min(100,Math.round(pts/need*100));
-        const full=pts>=need;
-        return `<div class="p-item ${full?'full':''}">
-          <div class="p-top">
-            <div><div class="p-nm">${p.nombre}</div><div class="p-pr">$${(p.precio_pesos||0).toLocaleString()}</div></div>
-            <div class="p-req"><div class="n">${need}</div><div class="l">${unidad}</div></div>
-          </div>
-          <div class="bar ${full?'done':''}"><i style="width:${pct}%"></i></div>
-          <div class="p-foot">
-            <span>${pct}%</span>
-            ${full?'<span class="ok">Disponible</span>':`<span>Faltan ${(need-pts).toLocaleString()} ${unidad}</span>`}
-          </div>
-          ${full?`<button class="btn-canje" onclick="canjear('${p.id}','${p.nombre.replace(/'/g,"\\'")}',${need})">Canjear</button>`:''}
-        </div>`}).join('')}
-    </div>`}).join('');
+  if(!lista.length){cont.innerHTML='<div class="empty">No hay premios para mostrar</div>';return;}
+  // agrupar por categoría con título
+  const cats=CAT==='__todos'?[...new Set(lista.map(p=>p.categoria||'Otros'))]:[CAT];
+  const ordenCat=c=>{const i=CATS.findIndex(x=>x.nombre===c);return i<0?999:i;};
+  cats.sort((a,b)=>ordenCat(a)-ordenCat(b));
+  cont.innerHTML=cats.map(cat=>{
+    const items=lista.filter(p=>(p.categoria||'Otros')===cat).sort((a,b)=>a.pts_necesarios-b.pts_necesarios);
+    if(!items.length)return '';
+    return `<div style="margin-bottom:8px;">
+      ${CAT==='__todos'?`<div style="display:flex;align-items:baseline;gap:8px;margin:14px 2px 10px;"><span class="sg" style="font-size:15px;font-weight:700;letter-spacing:-.01em;">${esc(cat)}</span><span style="font-size:11px;color:var(--faint);">${items.length}</span></div>`:''}
+      <div style="display:flex;flex-direction:column;gap:11px;">
+        ${items.map(p=>premioCard(p,pts,tint)).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+function premioCard(p,pts,tint){
+  const need=p.pts_necesarios||0;
+  const pct=need<=0?100:Math.min(100,Math.round(pts/need*100));
+  const full=pts>=need;
+  const iconInner=p.icono?(getIconSvg(p.icono)||''):'';
+  const iconBox=iconInner
+    ?`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${iconInner}</svg>`
+    :(p.icono&&p.icono.length<=4?`<span style="font-size:25px;line-height:1;">${p.icono}</span>`:`<svg class="ic" width="22" height="22" viewBox="0 0 24 24" stroke-width="1.7">${UI.gift}</svg>`);
+  return `<div style="background:var(--surface);border:1px solid ${full?tint+'4d':'var(--line)'};border-radius:16px;padding:15px;">
+    <div style="display:flex;align-items:flex-start;gap:13px;">
+      <div style="flex:none;width:48px;height:48px;border-radius:13px;background:${tint}1f;display:flex;align-items:center;justify-content:center;color:${tint};">${iconBox}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:15px;font-weight:600;">${esc(p.nombre)}</div>
+        <div style="font-size:12px;color:var(--faint);margin-top:2px;">${esc(p.categoria||'')}${p.precio_pesos?` · valor $${fmt(p.precio_pesos)}`:''}</div>
+      </div>
+      <div style="flex:none;text-align:center;background:${tint}1f;border:1px solid ${tint}4d;border-radius:11px;padding:7px 11px;">
+        <div class="sg" style="font-weight:700;font-size:18px;color:${tint};line-height:1;">${fmt(need)}</div>
+        <div style="font-size:9px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-top:2px;">pts</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;height:5px;border-radius:999px;background:rgba(245,241,234,.08);overflow:hidden;"><div style="height:100%;width:${pct}%;background:${full?'var(--ok)':tint};border-radius:999px;transition:width .4s;"></div></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
+      <span style="font-size:12px;color:${full?'var(--ok)':'var(--muted)'};">${full?'Disponible':`Faltan ${fmt(need-pts)} ${ptsName()}`}</span>
+      ${full?`<button onclick="pedirCanje('${p.id}','${esc(p.nombre).replace(/'/g,"\\'")}',${need})" style="background:${tint};color:#0a0908;border:none;border-radius:9px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;">Canjear</button>`:''}
+    </div>
+  </div>`;
 }
 
-/* CANJE */
-async function canjear(id,nombre,pts){
-  const unidad=B?.slug==='club-jagger'?'jaggercitos':'puntos';
-  if(!confirm(`¿Canjear ${nombre} por ${pts} ${unidad}?`))return;
-  const d=await api('/api/canjes','POST',{usuario:U.usuario,boliche:B.slug,premio_id:id});
+/* ════════ BOTTOM NAV ════════ */
+function navHTML(){
+  if(VIEW==='splash'||VIEW==='auth')return '';
+  const inBoliche=(VIEW==='boliche');
+  const tint=accent();
+  const pend=getPend();
+  const homeActive=VIEW==='home', perfilActive=VIEW==='perfil';
+  // Botón central: activo solo en boliche, con color del boliche. Si no, gris/desactivado.
+  const cajaBg=inBoliche?tint:'var(--surface3)';
+  const cajaFg=inBoliche?'#0a0908':'var(--faint2)';
+  const cajaShadow=inBoliche?`0 8px 24px ${tint}55`:'none';
+  const cajaIcon=pend.length?UI.cardPend:UI.card;
+  return `<div style="position:absolute;left:0;right:0;bottom:0;height:calc(78px + var(--sb));padding-bottom:var(--sb);background:rgba(16,14,11,.92);backdrop-filter:blur(12px);border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-around;z-index:15;">
+    <button onclick="go('home')" style="display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;color:${homeActive?'var(--accent)':'var(--faint)'};width:72px;"><svg class="ic" width="22" height="22" viewBox="0 0 24 24">${UI.home}</svg><span style="font-size:10px;font-weight:600;letter-spacing:.04em;">Inicio</span></button>
+    <button onclick="${inBoliche?'openCaja()':'cajaBloqueada()'}" style="flex:none;width:60px;height:60px;border-radius:20px;background:${cajaBg};border:none;display:flex;align-items:center;justify-content:center;color:${cajaFg};cursor:pointer;box-shadow:${cajaShadow};margin-top:-14px;position:relative;"><svg class="ic" width="25" height="25" viewBox="0 0 24 24">${cajaIcon}</svg>${pend.length&&inBoliche?`<span style="position:absolute;top:-2px;right:-2px;min-width:18px;height:18px;background:var(--err);color:#fff;border-radius:9px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;">${pend.length}</span>`:''}</button>
+    <button onclick="go('perfil')" style="display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;color:${perfilActive?'var(--accent)':'var(--faint)'};width:72px;"><svg class="ic" width="22" height="22" viewBox="0 0 24 24">${UI.user}</svg><span style="font-size:10px;font-weight:600;letter-spacing:.04em;">Perfil</span></button>
+  </div>`;
+}
+
+/* ════════ PERFIL GLOBAL ════════ */
+function perfilHTML(){
+  const ini=(U.usuario||'?')[0].toUpperCase();
+  return `<div class="screen">
+    <div style="flex:none;padding:calc(var(--st) + 24px) 22px 8px;"><div class="sg" style="font-weight:700;font-size:25px;letter-spacing:-.01em;">Mi perfil</div></div>
+    <div class="scroll" style="padding:14px 22px calc(100px + var(--sb));">
+      <div style="display:flex;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;">
+        <div style="position:relative;flex:none;">
+          <div class="sg" style="width:60px;height:60px;border-radius:18px;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:24px;color:var(--accent);overflow:hidden;">${U.avatar?`<img src="${U.avatar}" style="width:100%;height:100%;object-fit:cover;">`:ini}</div>
+          <button onclick="pickAvatar()" style="position:absolute;bottom:-4px;right:-4px;width:24px;height:24px;border-radius:8px;background:var(--accent);border:2px solid var(--surface);display:flex;align-items:center;justify-content:center;color:#0a0908;cursor:pointer;"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" stroke-width="2.4">${UI.cam}</svg></button>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:18px;font-weight:600;">${esc(U.nombre||U.usuario)}</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:2px;">@${esc(U.usuario)} · DNI ${esc(U.dni||'—')}</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--faint);margin:24px 2px 10px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;">Configuración de la cuenta</div>
+      <div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden;">
+        ${cfgRow('cam','Cambiar foto','','pickAvatar()')}
+        ${cfgRow('lock','Cambiar contraseña','','openPassSheet()')}
+        ${cfgRow('mail','Cambiar email',U.email||'','openEmailSheet()')}
+      </div>
+      <button onclick="logout()" style="margin-top:12px;width:100%;background:transparent;color:var(--err);border:1px solid rgba(192,86,74,.35);border-radius:15px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;">Cerrar sesión</button>
+    </div>
+  </div>${navHTML()}`;
+}
+function cfgRow(icon,label,value,action){
+  return `<button onclick="${action}" style="display:flex;align-items:center;gap:13px;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid var(--line);padding:15px 16px;cursor:pointer;color:inherit;">
+    <div style="flex:none;width:34px;height:34px;border-radius:10px;background:var(--surface3);display:flex;align-items:center;justify-content:center;color:var(--muted);"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" stroke-width="1.8">${UI[icon]}</svg></div>
+    <div style="flex:1;min-width:0;"><div style="font-size:14.5px;font-weight:500;">${label}</div>${value?`<div style="font-size:12.5px;color:var(--faint);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(value)}</div>`:''}</div>
+    <svg class="ic" width="18" height="18" viewBox="0 0 24 24" stroke="var(--faint2)">${UI.chev}</svg>
+  </button>`;
+}
+async function loadPerfil(){await refreshMe();render();}
+
+/* ════════ HISTORIAL ════════ */
+async function loadHist(){
+  if(!B||!U)return;
+  const hist=await api('/api/usuario/historial?usuario='+encodeURIComponent(U.usuario)+'&boliche='+B.slug);
+  const cont=document.getElementById('hist-list');if(!cont)return;
+  const tint=accent();
+  if(!hist||!hist.length){cont.innerHTML='<div class="empty">Sin asistencias registradas</div>';return;}
+  cont.innerHTML=hist.map(h=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 2px;border-bottom:1px solid var(--line);">
+      <div><div style="font-size:14px;font-weight:500;">${esc(h.evento_nombre||'Noche')}</div><div style="font-size:12px;color:var(--faint);margin-top:2px;">${esc(h.fecha||'')}</div></div>
+      <div class="sg" style="font-weight:600;font-size:14px;color:${tint};">+${fmt(h.total_pts||0)}</div>
+    </div>`).join('');
+}
+
+/* ════════ CANJE ════════ */
+function pedirCanje(id,nombre,pts){
+  canjeNuevo={id,nombre,pts};
+  const tint=accent();
+  showSheet(`
+    <div style="width:38px;height:4px;border-radius:999px;background:rgba(245,241,234,.18);margin:0 auto 18px;"></div>
+    <div class="sg" style="font-weight:700;font-size:20px;">¿Confirmás el canje?</div>
+    <div style="font-size:14px;color:var(--muted);margin-top:4px;">Vas a usar tus ${ptsName()} por este premio.</div>
+    <div style="margin-top:18px;background:#0f0d0a;border-radius:14px;padding:16px;display:flex;align-items:center;justify-content:space-between;">
+      <span style="font-size:15px;font-weight:600;">${esc(nombre)}</span>
+      <span class="sg" style="font-weight:700;font-size:18px;color:${tint};">${fmt(pts)} pts</span>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:18px;">
+      <button onclick="closeSheet()" style="flex:1;background:var(--surface2);color:var(--text);border:1px solid var(--line2);border-radius:13px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;">Cancelar</button>
+      <button onclick="confirmarCanje()" style="flex:1.4;background:${tint};color:#0a0908;border:none;border-radius:13px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;">Confirmar</button>
+    </div>`);
+}
+async function confirmarCanje(){
+  closeSheet();
+  if(!canjeNuevo)return;
+  const d=await api('/api/canjes','POST',{usuario:U.usuario,boliche:B.slug,premio_id:canjeNuevo.id});
   if(d.ok){
-    canjeNuevo={nombre,codigo:d.codigo,boliche:B.nombre};
     confeti();
-    document.getElementById('sh-canje-nombre').textContent=nombre;
-    document.getElementById('sh-canje').classList.add('show');
+    canjeNuevo.codigo=d.codigo;canjeNuevo.boliche=B.nombre;
     await refreshMe();
-    MYBU=(U.boliches||[]).find(x=>x.slug===B.slug);
-    document.getElementById('bo-pts').textContent=(MYBU?.jaggercitos||0).toLocaleString();
-    renderPremios();
+    MYBU=(U.boliches||[]).find(x=>x.slug===B.slug)||MYBU;
+    showCanjeExito(canjeNuevo);
   }else toast(d.error||'No se pudo canjear',false);
 }
-function closeSheets(){document.querySelectorAll('.sheet-bg').forEach(s=>s.classList.remove('show'))}
-function usarAhora(){
-  closeSheets();
-  abrirCaja(canjeNuevo);
-  canjeNuevo=null;
-  localStorage.removeItem('cp_pend');
+function showCanjeExito(c){
+  const tint=accent();
+  showSheet(`
+    <div style="width:38px;height:4px;border-radius:999px;background:rgba(245,241,234,.18);margin:0 auto 18px;"></div>
+    <div style="text-align:center;">
+      <div style="width:56px;height:56px;border-radius:50%;background:${tint}1f;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;color:${tint};"><svg class="ic" width="30" height="30" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
+      <div class="sg" style="font-weight:700;font-size:22px;">¡Canje exitoso!</div>
+      <div style="font-size:15px;color:var(--muted);margin-top:4px;">Canjeaste <b style="color:var(--text);">${esc(c.nombre)}</b></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:22px;">
+      <button onclick="usarAhora()" style="width:100%;background:${tint};color:#0a0908;border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;">Usar ahora</button>
+      <button onclick="usarDespues()" style="width:100%;background:transparent;color:var(--ok);border:1px solid rgba(61,163,93,.4);border-radius:14px;padding:15px;font-size:15px;font-weight:600;cursor:pointer;">Usar después</button>
+    </div>`);
 }
+function usarAhora(){closeSheet();const c=canjeNuevo;canjeNuevo=null;openCaja(c);}
 function usarDespues(){
-  closeSheets();
-  if(canjeNuevo){
-    const pend=getPend();pend.push(canjeNuevo);
-    localStorage.setItem('cp_pend',JSON.stringify(pend));
-    canjeNuevo=null;
-    toast('Guardado en tu perfil');
+  closeSheet();
+  if(canjeNuevo){const p=getPend();p.push(canjeNuevo);localStorage.setItem('cp_pend',JSON.stringify(p));canjeNuevo=null;toast('Guardado en tu perfil');render();}
+}
+function getPend(){try{return JSON.parse(localStorage.getItem('cp_pend')||'[]').filter(c=>!B||c.boliche===B.nombre||true)}catch(e){return[]}}
+function getPendAll(){try{return JSON.parse(localStorage.getItem('cp_pend')||'[]')}catch(e){return[]}}
+
+/* ════════ CAJA (pantalla crema) ════════ */
+function openCaja(canje=null){
+  if(!canje){const p=getPendAll().filter(c=>c.boliche===(B&&B.nombre));if(p.length)canje=p[0];}
+  const tint=accent();
+  const mono=(B&&B.nombre?B.nombre:'C')[0].toUpperCase();
+  const pts=MYBU?MYBU.jaggercitos:0, ni=nivelInfo(pts);
+  let overlay=document.getElementById('caja-ov');
+  if(!overlay){overlay=document.createElement('div');overlay.id='caja-ov';document.body.appendChild(overlay);}
+  overlay.style.cssText='position:fixed;inset:0;z-index:60;max-width:480px;margin:0 auto;';
+  overlay.innerHTML=`<div style="position:absolute;inset:0;background:linear-gradient(165deg,#f6f1e4 0%,#efe6cf 100%);display:flex;flex-direction:column;animation:cp-fade .25s ease;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:calc(var(--st) + 20px) 22px 0;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="sg" style="width:26px;height:26px;border-radius:8px;background:${tint};display:flex;align-items:center;justify-content:center;color:#0a0908;font-weight:700;font-size:12px;">${mono}</div>
+        <span class="sg" style="font-size:13px;font-weight:700;color:#1c1813;letter-spacing:.04em;">${esc(B&&B.nombre||'ClubPass')}</span>
+      </div>
+      <button onclick="closeCaja()" style="width:34px;height:34px;border-radius:11px;border:1px solid rgba(28,24,19,.18);background:transparent;color:#1c1813;display:flex;align-items:center;justify-content:center;cursor:pointer;"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 24px;">
+      <div style="font-size:11px;letter-spacing:.22em;color:#8a7c55;text-transform:uppercase;font-weight:600;">Mostrá esto en la caja</div>
+      <div class="sg" style="font-weight:700;font-size:clamp(40px,15vw,64px);color:#15110a;letter-spacing:-.01em;text-align:center;word-break:break-word;line-height:1;margin-top:14px;">${esc((U.usuario||'').toUpperCase())}</div>
+      ${U.nombre_pantalla&&U.nombre_pantalla!==U.usuario?`<div class="sg" style="font-weight:600;font-size:clamp(24px,8vw,38px);color:#7a6e4d;margin-top:10px;text-align:center;">${esc(U.nombre_pantalla)}</div>`:''}
+      <div style="font-size:15px;color:#5a513a;margin-top:14px;">${esc(U.nombre||'')}</div>
+      <div style="display:flex;gap:10px;margin-top:18px;">
+        <span style="font-size:12px;font-weight:700;color:#1c1813;background:rgba(28,24,19,.07);border:1px solid rgba(28,24,19,.14);padding:5px 13px;border-radius:999px;">DNI ${esc(U.dni||'—')}</span>
+        <span style="font-size:12px;font-weight:700;color:#1c1813;background:rgba(28,24,19,.07);border:1px solid rgba(28,24,19,.14);padding:5px 13px;border-radius:999px;">Nv ${ni.nivel} · ${ni.nombre}</span>
+      </div>
+    </div>
+    <div style="padding:0 22px calc(46px + var(--sb));">
+      ${canje?`<div style="background:#15110a;border-radius:18px;padding:18px;display:flex;align-items:center;gap:14px;">
+        <div style="flex:none;width:44px;height:44px;border-radius:13px;background:${tint}29;display:flex;align-items:center;justify-content:center;color:${tint};"><svg class="ic" width="22" height="22" viewBox="0 0 24 24">${UI.ticket}</svg></div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9a8c64;font-weight:600;">Canje pendiente</div>
+          <div style="font-size:15px;font-weight:600;color:#f4f1ea;margin-top:2px;">${esc(canje.nombre)}</div>
+          <div class="sg" style="font-size:11.5px;color:#6b6149;margin-top:1px;">Código ${esc(canje.codigo||'—')}</div>
+        </div>
+      </div>`:`<div style="text-align:center;font-size:12.5px;color:#8a7c55;">El cajero suma tu consumo a este usuario</div>`}
+    </div>
+  </div>`;
+  overlay.style.display='block';
+  if('wakeLock' in navigator)navigator.wakeLock.request('screen').catch(()=>{});
+  // Monitorear entrega del canje para autocerrar
+  if(cajaMonitor){clearInterval(cajaMonitor);cajaMonitor=null;}
+  if(canje&&canje.codigo){
+    cajaMonitor=setInterval(async()=>{
+      try{const r=await fetch('/api/canjes/estado?codigo='+encodeURIComponent(canje.codigo));const d=await r.json();
+        if(d.ok&&d.usado){clearInterval(cajaMonitor);cajaMonitor=null;
+          // quitar de pendientes
+          const p=getPendAll().filter(c=>c.codigo!==canje.codigo);localStorage.setItem('cp_pend',JSON.stringify(p));
+          closeCaja();toast('Premio entregado ✓');render();
+        }}catch(e){}
+    },5000);
   }
 }
-function getPend(){try{return JSON.parse(localStorage.getItem('cp_pend')||'[]')}catch(e){return[]}}
+function closeCaja(){if(cajaMonitor){clearInterval(cajaMonitor);cajaMonitor=null;}const o=document.getElementById('caja-ov');if(o)o.style.display='none';}
 
-/* CAJA */
-function abrirCaja(canje=null){
-  document.getElementById('caja-usr').textContent=U.usuario.toUpperCase();
-  const pant=U.nombre_pantalla||'';
-  document.getElementById('caja-pant-l').style.display=pant?'block':'none';
-  document.getElementById('caja-pant').style.display=pant?'block':'none';
-  document.getElementById('caja-pant').textContent=pant;
-  const cb=document.getElementById('caja-canje');
-  if(canje){cb.style.display='block';document.getElementById('caja-canje-nombre').textContent=canje.nombre}
-  else cb.style.display='none';
-  if('wakeLock' in navigator)navigator.wakeLock.request('screen').catch(()=>{});
-  document.getElementById('caja').style.display='flex';
+/* ════════ SHEETS ════════ */
+function showSheet(inner){
+  let s=document.getElementById('sheet-ov');
+  if(!s){s=document.createElement('div');s.id='sheet-ov';document.body.appendChild(s);}
+  s.style.cssText='position:fixed;inset:0;z-index:70;max-width:480px;margin:0 auto;';
+  s.innerHTML=`<div onclick="if(event.target===this)closeSheet()" style="position:absolute;inset:0;background:rgba(5,4,3,.72);animation:cp-fade .2s ease;"></div>
+    <div style="position:absolute;left:0;right:0;bottom:0;background:#16130f;border-top:1px solid var(--line2);border-radius:24px 24px 0 0;padding:24px 24px calc(28px + var(--sb));animation:cp-sheet .3s cubic-bezier(.32,.72,0,1);">${inner}</div>`;
+  s.style.display='block';
 }
-function cerrarCaja(){document.getElementById('caja').style.display='none';if(!document.getElementById('perfil').classList.contains('off'))loadPerfil()}
+function closeSheet(){const s=document.getElementById('sheet-ov');if(s)s.style.display='none';}
 
-/* PERFIL */
-async function loadPerfil(){
-  if(!U)return;
-  await refreshMe();
-  const av=document.getElementById('pf-avatar');
-  av.innerHTML=U.avatar?`<img src="${U.avatar}">`:(U.usuario||'?')[0].toUpperCase();
-  document.getElementById('pf-nombre').textContent=U.nombre||U.usuario;
-  document.getElementById('pf-meta').textContent='@'+U.usuario+' · DNI '+(U.dni||'—');
-  document.getElementById('pf-pantalla').value=U.nombre_pantalla||'';
-  document.getElementById('email-actual').textContent=U.email||'';
-
-  const pend=getPend();
-  document.getElementById('pend-label').style.display=pend.length?'flex':'none';
-  document.getElementById('pend-list').innerHTML=pend.map((c,i)=>`
-    <div class="canje-pend">
-      <div class="t">${c.nombre}</div>
-      <div class="s">${c.boliche||''}</div>
-      <button onclick="usarPend(${i})">Usar ahora</button>
-    </div>`).join('');
-
-  const bs=U.boliches||[];
-  document.getElementById('pf-boliches').innerHTML=bs.length?bs.map(b=>`
-    <div class="mini-b" onclick='entrar(${JSON.stringify({slug:b.slug,nombre:b.nombre,color_primario:b.color_primario,logo_url:b.logo_url}).replace(/'/g,"&#39;")})'>
-      <div class="sq" style="--bc:${b.color_primario||'#C9A227'}"></div>
-      <div><div style="font-weight:600;font-size:14.5px">${b.nombre}</div>
-      <div style="font-size:12px;color:var(--muted);margin-top:1px">Nivel ${b.nivel||1}</div></div>
-      <div class="pts"><div class="n">${(b.jaggercitos||0).toLocaleString()}</div><div class="l">${b.slug==='club-jagger'?'jaggercitos':'puntos'}</div></div>
-    </div>`).join(''):'<div class="empty">Todavía no sumaste puntos en ningún boliche</div>';
+function openDisplaySheet(){
+  showSheet(`
+    <div style="width:38px;height:4px;border-radius:999px;background:rgba(245,241,234,.18);margin:0 auto 18px;"></div>
+    <div class="sg" style="font-weight:700;font-size:20px;">Nombre para mostrar</div>
+    <div style="font-size:13px;color:var(--muted);margin-top:4px;">Así te ven en el ranking del boliche. Decílo en recepción o caja.</div>
+    <input id="disp-input" value="${esc(U.nombre_pantalla||'')}" placeholder="ej: FLORENCIA" oninput="this.value=this.value.toUpperCase()" style="width:100%;margin-top:16px;background:var(--surface);border:1px solid var(--line2);border-radius:13px;color:var(--text);padding:14px 16px;font-size:16px;outline:none;" />
+    <button onclick="saveDisplay()" style="width:100%;margin-top:14px;background:var(--accent);color:#0a0908;border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;">Guardar</button>`);
 }
-function usarPend(i){
-  const pend=getPend();
-  const c=pend.splice(i,1)[0];
-  localStorage.setItem('cp_pend',JSON.stringify(pend));
-  abrirCaja(c);
-}
-
-async function guardarPantalla(){
-  const v=document.getElementById('pf-pantalla').value.trim();
+async function saveDisplay(){
+  const v=document.getElementById('disp-input').value.trim();
   const d=await api('/api/usuario/nombre-pantalla','POST',{usuario:U.usuario,nombre_pantalla:v});
-  if(d.ok){U.nombre_pantalla=v;localStorage.setItem('cp_u',JSON.stringify(U));toast('Nombre guardado')}
+  if(d.ok){U.nombre_pantalla=v;localStorage.setItem('cp_u',JSON.stringify(U));closeSheet();toast('Nombre guardado');render();}
   else toast(d.error||'Error',false);
 }
-
-/* SHEETS cuenta */
-function openSheet(t){
-  if(t==='foto'){pickAvatar();return}
-  if(t==='pass')document.getElementById('sh-pass').classList.add('show');
-  if(t==='email')document.getElementById('sh-email').classList.add('show');
+function openPassSheet(){
+  showSheet(`
+    <div style="width:38px;height:4px;border-radius:999px;background:rgba(245,241,234,.18);margin:0 auto 18px;"></div>
+    <div class="sg" style="font-weight:700;font-size:20px;">Cambiar contraseña</div>
+    <div style="display:flex;flex-direction:column;gap:11px;margin-top:16px;">
+      <input id="cp-old" type="password" placeholder="Contraseña actual" style="width:100%;background:var(--surface);border:1px solid var(--line2);border-radius:13px;color:var(--text);padding:14px 16px;font-size:15px;outline:none;" />
+      <input id="cp-new" type="password" placeholder="Nueva (mín. 6)" style="width:100%;background:var(--surface);border:1px solid var(--line2);border-radius:13px;color:var(--text);padding:14px 16px;font-size:15px;outline:none;" />
+      <input id="cp-new2" type="password" placeholder="Repetir nueva" style="width:100%;background:var(--surface);border:1px solid var(--line2);border-radius:13px;color:var(--text);padding:14px 16px;font-size:15px;outline:none;" />
+      <button onclick="savePass()" style="width:100%;background:var(--accent);color:#0a0908;border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;">Guardar</button>
+      <div id="cp-err" style="color:var(--err);font-size:13px;text-align:center;display:none;"></div>
+    </div>`);
 }
-async function cambiarPass(){
-  const old=document.getElementById('cp-old').value, nu=document.getElementById('cp-new').value, nu2=document.getElementById('cp-new2').value;
+async function savePass(){
+  const old=document.getElementById('cp-old').value,nu=document.getElementById('cp-new').value,nu2=document.getElementById('cp-new2').value;
   const err=document.getElementById('cp-err');err.style.display='none';
-  if(nu.length<6){err.textContent='Mínimo 6 caracteres';err.style.display='block';return}
-  if(nu!==nu2){err.textContent='Las contraseñas no coinciden';err.style.display='block';return}
+  if(nu.length<6){err.textContent='Mínimo 6 caracteres';err.style.display='block';return;}
+  if(nu!==nu2){err.textContent='No coinciden';err.style.display='block';return;}
   const d=await api('/api/usuario/password','POST',{usuario:U.usuario,actual:old,nueva:nu});
-  if(d.ok){closeSheets();toast('Contraseña actualizada');['cp-old','cp-new','cp-new2'].forEach(i=>document.getElementById(i).value='')}
-  else{err.textContent=d.error||'Error';err.style.display='block'}
+  if(d.ok){closeSheet();toast('Contraseña actualizada');}else{err.textContent=d.error||'Error';err.style.display='block';}
 }
-async function cambiarEmail(){
-  const nu=document.getElementById('ce-new').value.trim(), pass=document.getElementById('ce-pass').value;
+function openEmailSheet(){
+  showSheet(`
+    <div style="width:38px;height:4px;border-radius:999px;background:rgba(245,241,234,.18);margin:0 auto 18px;"></div>
+    <div class="sg" style="font-weight:700;font-size:20px;">Cambiar email</div>
+    <div style="display:flex;flex-direction:column;gap:11px;margin-top:16px;">
+      <input id="ce-new" type="email" placeholder="Nuevo email" value="${esc(U.email||'')}" style="width:100%;background:var(--surface);border:1px solid var(--line2);border-radius:13px;color:var(--text);padding:14px 16px;font-size:15px;outline:none;" />
+      <input id="ce-pass" type="password" placeholder="Tu contraseña" style="width:100%;background:var(--surface);border:1px solid var(--line2);border-radius:13px;color:var(--text);padding:14px 16px;font-size:15px;outline:none;" />
+      <button onclick="saveEmail()" style="width:100%;background:var(--accent);color:#0a0908;border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;">Guardar</button>
+      <div id="ce-err" style="color:var(--err);font-size:13px;text-align:center;display:none;"></div>
+    </div>`);
+}
+async function saveEmail(){
+  const nu=document.getElementById('ce-new').value.trim(),pass=document.getElementById('ce-pass').value;
   const err=document.getElementById('ce-err');err.style.display='none';
-  if(!nu){err.textContent='Ingresá el nuevo email';err.style.display='block';return}
+  if(!nu){err.textContent='Ingresá el email';err.style.display='block';return;}
   const d=await api('/api/usuario/email','POST',{usuario:U.usuario,password:pass,email:nu});
-  if(d.ok){U.email=nu;localStorage.setItem('cp_u',JSON.stringify(U));closeSheets();toast('Email actualizado');loadPerfil()}
-  else{err.textContent=d.error||'Error';err.style.display='block'}
+  if(d.ok){U.email=nu;localStorage.setItem('cp_u',JSON.stringify(U));closeSheet();toast('Email actualizado');render();}
+  else{err.textContent=d.error||'Error';err.style.display='block';}
 }
 
-/* AVATAR */
-function pickAvatar(){document.getElementById('f-avatar').click()}
-async function subirAvatar(input){
-  const f=input.files[0];if(!f)return;
+/* ════════ AVATAR ════════ */
+function pickAvatar(){document.getElementById('f-avatar').click();}
+document.getElementById('f-avatar').addEventListener('change',function(){
+  const f=this.files[0];if(!f)return;
   const rd=new FileReader();
-  rd.onload=e=>{
-    const img=new Image();
-    img.onload=async()=>{
-      const c=document.createElement('canvas');c.width=280;c.height=280;
-      const x=c.getContext('2d');
-      const r=Math.max(280/img.width,280/img.height);
-      x.drawImage(img,(280-img.width*r)/2,(280-img.height*r)/2,img.width*r,img.height*r);
-      const b64=c.toDataURL('image/jpeg',.75);
-      const d=await api('/api/usuario/avatar','POST',{usuario:U.usuario,avatar:b64});
-      if(d.ok){U.avatar=b64;localStorage.setItem('cp_u',JSON.stringify(U));toast('Foto actualizada');loadPerfil()}
-      else toast('Error al subir',false);
-    };
-    img.src=e.target.result;
-  };
-  rd.readAsDataURL(f);
-  input.value='';
+  rd.onload=e=>{const img=new Image();img.onload=async()=>{
+    const c=document.createElement('canvas');c.width=280;c.height=280;const x=c.getContext('2d');
+    const r=Math.max(280/img.width,280/img.height);
+    x.drawImage(img,(280-img.width*r)/2,(280-img.height*r)/2,img.width*r,img.height*r);
+    const b64=c.toDataURL('image/jpeg',.75);
+    const d=await api('/api/usuario/avatar','POST',{usuario:U.usuario,avatar:b64});
+    if(d.ok){U.avatar=b64;localStorage.setItem('cp_u',JSON.stringify(U));toast('Foto actualizada');render();}else toast('Error al subir',false);
+  };img.src=e.target.result;};
+  rd.readAsDataURL(f);this.value='';
+});
+
+/* ════════ CONFETI ════════ */
+function confeti(){
+  const cols=[accent(),'#EFE6C2','#fff','#8B6914'];
+  for(let i=0;i<70;i++){const e=document.createElement('div');
+    const s=5+Math.random()*8;
+    e.style.cssText=`position:fixed;bottom:0;left:${Math.random()*100}%;width:${s}px;height:${s}px;background:${cols[i%cols.length]};border-radius:${Math.random()>.5?'50%':'2px'};pointer-events:none;z-index:300;--dx:${(Math.random()-.5)*280}px;--rt:${(Math.random()-.5)*900}deg;animation:cp-rise ${1.4+Math.random()*1.4}s ${Math.random()*.4}s cubic-bezier(.2,.8,.4,1) forwards;`;
+    document.body.appendChild(e);setTimeout(()=>e.remove(),3200);}
 }
 
-/* CONFETI */
-function confeti(){
-  const cols=[getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#C9A227','#EFE6C2','#fff','#8B6914'];
-  for(let i=0;i<70;i++){
-    const e=document.createElement('div');e.className='confetti';
-    const s=5+Math.random()*8;
-    e.style.cssText=`left:${Math.random()*100}%;width:${s}px;height:${s}px;background:${cols[i%cols.length]};--dx:${(Math.random()-.5)*280}px;--rt:${(Math.random()-.5)*900}deg;--dur:${1.4+Math.random()*1.4}s;--del:${Math.random()*.4}s`;
-    document.body.appendChild(e);setTimeout(()=>e.remove(),3200);
+/* ════════ AUTO-REFRESH ════════ */
+setInterval(async()=>{
+  if(!U||VIEW==='splash'||VIEW==='auth')return;
+  const prev=MYBU?MYBU.jaggercitos:0;
+  await refreshMe();
+  if(VIEW==='boliche'&&B){
+    const nb=(U.boliches||[]).find(x=>x.slug===B.slug);
+    if(nb){const subió=nb.jaggercitos>(MYBU?MYBU.jaggercitos:0);MYBU=nb;
+      if(subió){toast('+'+fmt(nb.jaggercitos-prev)+' '+ptsName());render();}
+    }
   }
+},5000);
+
+/* ════════ INIT ════════ */
+function afterRender(){
+  if(VIEW==='boliche'&&BTAB==='premios')renderPremios(document.getElementById('prem-search')?.value||'');
+  if(VIEW==='boliche'&&BTAB==='perfil')loadHist();
 }
+const _render=render;
+render=function(){_render();afterRender();};
+
+window.addEventListener('load',()=>{
+  if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  setTimeout(()=>{if(U){go('home');}else{VIEW='auth';render();}},1600);
+});
+render();
 </script>
 </body>
 </html>
