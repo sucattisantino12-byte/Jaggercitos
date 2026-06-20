@@ -354,20 +354,22 @@ function homeHTML(){
     </div>
   </div>${navHTML()}`;
 }
+let HOMEBOL=[];
 async function loadHome(){
   if(!U)return;
   const bs=await api('/api/boliches');
+  HOMEBOL=bs||[];
   await refreshMe();
   const cont=document.getElementById('home-list');if(!cont)return;
   if(!bs||!bs.length){cont.innerHTML='<div class="empty">No hay boliches disponibles</div>';return;}
-  cont.innerHTML=bs.map(b=>{
+  cont.innerHTML=bs.map((b,i)=>{
     const mybu=(U.boliches||[]).find(x=>x.slug===b.slug);
     const pts=mybu?mybu.jaggercitos:0;
     const tint=b.color_primario||'#d4a829';
     const pn=b.slug==='club-jagger'?'jaggercitos':'puntos';
     const mono=(b.nombre||'?')[0].toUpperCase();
     const bg=b.logo_url?`background:#100e0b center/cover url('${b.logo_url}');`:`background:linear-gradient(150deg,${tint}22,#100e0b 70%);`;
-    return `<button onclick='openBoliche(${JSON.stringify(b).replace(/'/g,"&#39;")})' style="position:relative;display:block;width:100%;text-align:left;height:158px;border-radius:20px;border:1px solid var(--line2);overflow:hidden;cursor:pointer;${bg}color:inherit;">
+    return `<button onclick="openBolicheIdx(${i})" style="position:relative;display:block;width:100%;text-align:left;height:158px;border-radius:20px;border:1px solid var(--line2);overflow:hidden;cursor:pointer;${bg}color:inherit;">
       <div style="position:absolute;inset:0;background:linear-gradient(160deg,transparent 30%,rgba(10,9,8,.55) 78%,rgba(10,9,8,.9) 100%);"></div>
       <div style="position:absolute;top:14px;left:16px;right:16px;display:flex;align-items:center;justify-content:space-between;">
         <div style="display:flex;align-items:center;gap:7px;">
@@ -386,6 +388,7 @@ async function loadHome(){
     </button>`;
   }).join('');
 }
+function openBolicheIdx(i){if(HOMEBOL[i])openBoliche(HOMEBOL[i]);}
 
 /* ════════ BOLICHE ════════ */
 async function openBoliche(b){
@@ -790,12 +793,22 @@ function confeti(){
 /* ════════ AUTO-REFRESH ════════ */
 setInterval(async()=>{
   if(!U||VIEW==='splash'||VIEW==='auth')return;
+  // No refrescar si hay un sheet o la caja abiertos (molesta al usuario)
+  const sheetOpen=document.getElementById('sheet-ov')&&document.getElementById('sheet-ov').style.display==='block';
+  const cajaOpen=document.getElementById('caja-ov')&&document.getElementById('caja-ov').style.display==='block';
   const prev=MYBU?MYBU.jaggercitos:0;
   await refreshMe();
-  if(VIEW==='boliche'&&B){
+  if(VIEW==='boliche'&&B&&!sheetOpen&&!cajaOpen){
     const nb=(U.boliches||[]).find(x=>x.slug===B.slug);
-    if(nb){const subió=nb.jaggercitos>(MYBU?MYBU.jaggercitos:0);MYBU=nb;
-      if(subió){toast('+'+fmt(nb.jaggercitos-prev)+' '+ptsName());render();}
+    if(nb){
+      const subió=nb.jaggercitos>prev;
+      MYBU=nb;
+      if(subió){
+        toast('+'+fmt(nb.jaggercitos-prev)+' '+ptsName());
+        // Actualizar solo los puntos visibles sin re-render completo
+        if(BTAB==='premios')renderPremios(document.getElementById('prem-search')?.value||'');
+        else render();
+      }
     }
   }
 },5000);
